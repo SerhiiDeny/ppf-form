@@ -13,7 +13,7 @@
 </head>
 <body class="bg-slate-50 text-slate-900">
   <div class="max-w-2xl mx-auto p-4">
-    <h1 class="text-2xl font-bold mb-4">PPF Quote — Form</h1>
+    <h1 class="text-2xl font-bold mb-4">PPF_Barcelona Precio</h1>
 
     <!-- ENV: fill your Supabase keys (or inject via server) -->
     <script>
@@ -225,7 +225,7 @@
     <div class="space-y-4 bg-white rounded-2xl shadow p-4">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label class="block text-sm mb-1">Brand</label>
+          <label class="block text-sm mb-1">Marca</label>
           <select id="brand" class="w-full border rounded-xl p-2"></select>
         </div>
         <div>
@@ -240,7 +240,7 @@
           </select>
         </div>
         <div>
-          <label class="block text-sm mb-1">PPF Brand</label>
+          <label class="block text-sm mb-1">Tipo de película</label>
           <select id="ppf" class="w-full border rounded-xl p-2"></select>
         </div>
       </div>
@@ -251,10 +251,10 @@
           <select id="basic" class="w-full border rounded-xl p-2"></select>
         </div>
         <div>
-          <label class="block text-sm mb-1">Mode</label>
+          <label class="block text-sm mb-1">Formato de respuesta</label>
           <div class="flex items-center gap-4 p-2 border rounded-xl">
-            <label class="inline-flex items-center gap-2"><input type="radio" name="mode" value="text" checked> <span>Text</span></label>
-            <label class="inline-flex items-center gap-2"><input type="radio" name="mode" value="doc"> <span>Document</span></label>
+            <label class="inline-flex items-center gap-2"><input type="radio" name="mode" value="text" checked> <span>Mensaje</span></label>
+            <label class="inline-flex items-center gap-2"><input type="radio" name="mode" value="doc"> <span>PDF</span></label>
           </div>
         </div>
       </div>
@@ -293,3 +293,4 @@
   </div>
 </body>
 </html>
+
