@@ -236,14 +236,5 @@
   </script>
 </body>
 </html>
-(async () => {
-  try {
-    console.log('DEBUG: ping price…');
-    const { data, error } = await supabase.from('price').select('service_name, type').limit(3);
-    console.log('DEBUG price:', { data, error });
-    if (error) alert('Supabase error (price): ' + error.message);
-  } catch (e) {
-    alert('JS error: ' + (e?.message || e));
-  }
-})();
+
 
