@@ -90,7 +90,7 @@
   </div>
 
   <script>
-    // ← ЗАМЕНИ на свои значения (ты уже вставил):
+    // ← ВСТАВЬ сюда свои значения:
     const SUPABASE_URL = "https://pxgjwdhwxtzizhgotqur.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4Z2p3ZGh3eHR6aXpoZ290cXVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMwMDc4MjAsImV4cCI6MjA2ODU4MzgyMH0.H-31tjjjcNAn7jpMutYZN6LLImqdsVvYoJWxhYtER84";
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -107,88 +107,109 @@
       .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
       .replace(/[^a-z0-9]+/g,'-');
 
-    // ───────── ЗАГРУЗКА ДАННЫХ ИЗ SUPABASE ─────────
+    // ───────── ЗАГРУЗКА ДАННЫХ ИЗ SUPABASE С ОТЛОВОМ ОШИБОК ─────────
 
-    // 1) Марки авто → car_marcas.marca
     async function loadBrands() {
       const el = document.getElementById('brand');
       el.disabled = true;
-      const { data, error } = await supabase
-        .from('car_marcas')
-        .select('marca')
-        .order('marca', { ascending: true });
-      el.disabled = false;
-      if (error) { console.error(error); return; }
-      const brands = (data || []).map(r => r.marca);
-      el.innerHTML = '<option value="">Selecciona la marca…</option>' +
-        brands.map(b => `<option value="${b}">${b}</option>`).join('');
+      try {
+        console.log('LOAD brands…');
+        const { data } = await supabase
+          .from('car_marcas')
+          .select('marca')
+          .order('marca', { ascending: true })
+          .throwOnError();
+        const brands = (data || []).map(r => r.marca);
+        el.innerHTML = '<option value="">Selecciona la marca…</option>' +
+          brands.map(b => `<option value="${b}">${b}</option>`).join('');
+        console.log('OK brands:', brands.length);
+      } catch (err) {
+        console.error('Ошибка при загрузке car_marcas:', err.message || err);
+        el.innerHTML = '<option value="">Error cargando marcas</option>';
+      } finally {
+        el.disabled = false;
+      }
     }
 
-    // 2) Типы плёнки → film_coefficients.tipo_ppf
     async function loadPpfTypes() {
       const el = document.getElementById('ppf');
       el.disabled = true;
-      const { data, error } = await supabase
-        .from('film_coefficients')
-        .select('tipo_ppf')
-        .order('tipo_ppf', { ascending: true });
-      el.disabled = false;
-      if (error) { console.error(error); return; }
-      const types = [...new Set((data || []).map(r => r.tipo_ppf))];
-      el.innerHTML = '<option value="">Selecciona tipo de película…</option>' +
-        types.map(t => `<option value="${t}">${t}</option>`).join('');
+      try {
+        console.log('LOAD film types…');
+        const { data } = await supabase
+          .from('film_coefficients')
+          .select('tipo_ppf')
+          .order('tipo_ppf', { ascending: true })
+          .throwOnError();
+        const types = [...new Set((data || []).map(r => r.tipo_ppf))];
+        el.innerHTML = '<option value="">Selecciona tipo de película…</option>' +
+          types.map(t => `<option value="${t}">${t}</option>`).join('');
+        console.log('OK film types:', types.length);
+      } catch (err) {
+        console.error('Ошибка при загрузке film_coefficients:', err.message || err);
+        el.innerHTML = '<option value="">Error cargando películas</option>';
+      } finally {
+        el.disabled = false;
+      }
     }
 
-    // 3) Блок basic → price (type = basic), поведение radio
     async function loadBasicServices() {
       const box = document.getElementById('basic-box');
       box.innerHTML = '';
-      const { data, error } = await supabase
-        .from('price')
-        .select('service_name')
-        .ilike('type', 'basic');
-      if (error) { console.error(error); return; }
-      const items = (data || []).map(r => r.service_name);
-
-      items.forEach(name => {
-        const id = 'basic-' + slug(name);
-        const row = document.createElement('label');
-        row.className = 'flex items-center gap-2 py-1';
-        row.innerHTML = `<input type="checkbox" class="basic-item" id="${id}" value="${name}"> <span>${name}</span>`;
-        box.appendChild(row);
-      });
-
-      // radio-поведение: можно выбрать только один basic
-      box.addEventListener('change', (e) => {
-        if (e.target && e.target.classList.contains('basic-item') && e.target.checked) {
-          document.querySelectorAll('.basic-item').forEach(cb => {
-            if (cb !== e.target) cb.checked = false;
-          });
-        }
-      });
+      try {
+        console.log('LOAD basic services…');
+        const { data } = await supabase
+          .from('price')
+          .select('service_name')
+          .eq('type', 'basic')     // быстрее чем ilike
+          .throwOnError();
+        const items = (data || []).map(r => r.service_name);
+        items.forEach(name => {
+          const id = 'basic-' + slug(name);
+          const row = document.createElement('label');
+          row.className = 'flex items-center gap-2 py-1';
+          row.innerHTML = `<input type="checkbox" class="basic-item" id="${id}" value="${name}"> <span>${name}</span>`;
+          box.appendChild(row);
+        });
+        // radio-поведение
+        box.addEventListener('change', (e) => {
+          if (e.target?.classList.contains('basic-item') && e.target.checked) {
+            document.querySelectorAll('.basic-item').forEach(cb => { if (cb !== e.target) cb.checked = false; });
+          }
+        }, { once: true });
+        console.log('OK basic services:', items.length);
+      } catch (err) {
+        console.error('Ошибка при загрузке price (basic):', err.message || err);
+        box.innerHTML = '<div class="text-sm text-red-600">Error cargando servicios básicos</div>';
+      }
     }
 
-    // 4) Блок partial → price (type = partial), мультивыбор
     async function loadPartialServices() {
       const box = document.getElementById('partial-box');
       box.innerHTML = '';
-      const { data, error } = await supabase
-        .from('price')
-        .select('service_name')
-        .ilike('type', 'partial');
-      if (error) { console.error(error); return; }
-      const items = (data || []).map(r => r.service_name);
-
-      items.forEach(name => {
-        const id = 'partial-' + slug(name);
-        const row = document.createElement('label');
-        row.className = 'flex items-center gap-2 py-1';
-        row.innerHTML = `<input type="checkbox" class="partial-item" id="${id}" value="${name}"> <span>${name}</span>`;
-        box.appendChild(row);
-      });
+      try {
+        console.log('LOAD partial services…');
+        const { data } = await supabase
+          .from('price')
+          .select('service_name')
+          .eq('type', 'partial')
+          .throwOnError();
+        const items = (data || []).map(r => r.service_name);
+        items.forEach(name => {
+          const id = 'partial-' + slug(name);
+          const row = document.createElement('label');
+          row.className = 'flex items-center gap-2 py-1';
+          row.innerHTML = `<input type="checkbox" class="partial-item" id="${id}" value="${name}"> <span>${name}</span>`;
+          box.appendChild(row);
+        });
+        console.log('OK partial services:', items.length);
+      } catch (err) {
+        console.error('Ошибка при загрузке price (partial):', err.message || err);
+        box.innerHTML = '<div class="text-sm text-red-600">Error cargando servicios parciales</div>';
+      }
     }
 
-    // ───────── СБОР ДАННЫХ → PAYLOAD ─────────
+    // ───────── СБОР ПОЛЕЙ → PAYLOAD ─────────
     function payloadForWorkflow() {
       const basic = Array.from(document.querySelectorAll('.basic-item'))
         .find(i => i.checked)?.value || '';
@@ -203,7 +224,7 @@
         modelo: document.getElementById('model').value || '',
         año: document.getElementById('year').value || '',
         service_basic: basic,
-        service_partial: partial.join(', '),    // ← твой текущий формат
+        service_partial: partial.join(', '),
         marca_ppf: document.getElementById('ppf').value || '',
         check_promotion: document.getElementById('promo').checked ? 'Checked' : '',
         mode: document.querySelector('input[name="mode"]:checked')?.value || 'text'
@@ -224,17 +245,13 @@
           tg.sendData(JSON.stringify(payloadForWorkflow()));
         });
       }
-
       document.getElementById('submit').addEventListener('click', () => {
         const payload = payloadForWorkflow();
         if (tg) tg.sendData(JSON.stringify(payload));
         else alert('Payload:\n' + JSON.stringify(payload, null, 2));
       });
     }
-
     document.addEventListener('DOMContentLoaded', init);
   </script>
 </body>
 </html>
-
-
