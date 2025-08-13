@@ -3,12 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>PPF Quote — WebApp</title>
-  <!-- Tailwind -->
+  <title>PPF_Barcelona Precio</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Telegram WebApp SDK -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-slate-50 text-slate-900">
@@ -29,7 +26,7 @@
         </div>
         <div>
           <label class="block text-sm mb-1">Año</label>
-          <input id="year" type="number" inputmode="numeric" class="w-full border rounded-xl p-2" placeholder="2024" />
+          <input id="year" type="number" inputmode="numeric" class="w-full border rounded-xl p-2" placeholder="2025" />
         </div>
         <div>
           <label class="block text-sm mb-1">Tipo de película</label>
@@ -50,35 +47,33 @@
         </div>
       </div>
 
-      <!-- FORMATO RESPUESTA -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label class="block text-sm mb-1">Formato de respuesta</label>
-          <div class="flex items-center gap-4 p-2 border rounded-xl">
-            <label class="inline-flex items-center gap-2">
-              <input type="radio" name="mode" value="text" checked>
-              <span>Mensaje</span>
-            </label>
-            <label class="inline-flex items-center gap-2">
-              <input type="radio" name="mode" value="doc">
-              <span>PDF</span>
-            </label>
-          </div>
+      <!-- FORMATO DE RESPUESTA -->
+      <div>
+        <label class="block text-sm mb-1">Formato de respuesta</label>
+        <div class="flex items-center gap-4 p-2 border rounded-xl">
+          <label class="inline-flex items-center gap-2">
+            <input type="radio" name="mode" value="text" checked>
+            <span>Mensaje</span>
+          </label>
+          <label class="inline-flex items-center gap-2">
+            <input type="radio" name="mode" value="doc">
+            <span>PDF</span>
+          </label>
         </div>
       </div>
 
-      <!-- DATOS OPCIONALES DEL CLIENTE -->
+      <!-- DATOS DEL CLIENTE (opcionales) -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-          <label class="block text-sm mb-1">Nombre (opcional)</label>
+          <label class="block text-sm mb-1">Nombre</label>
           <input id="name_client" class="w-full border rounded-xl p-2" placeholder="Nombre" />
         </div>
         <div>
-          <label class="block text-sm mb-1">Email (opcional)</label>
+          <label class="block text-sm mb-1">Email</label>
           <input id="email_client" class="w-full border rounded-xl p-2" placeholder="Email" />
         </div>
         <div>
-          <label class="block text-sm mb-1">Teléfono (opcional)</label>
+          <label class="block text-sm mb-1">Teléfono</label>
           <input id="phone" class="w-full border rounded-xl p-2" placeholder="Teléfono" />
         </div>
       </div>
@@ -95,8 +90,8 @@
   </div>
 
   <script>
-    // ← ЗАМЕНИ на свои значения:
-    const SUPABASE_URL = "https://pxgjwdhwxtzizhgotqur.supabase.co";
+    // ← ЗАМЕНИ на свои значения (ты уже вставил):
+    const SUPABASE_URL = "https://pxgjwdhwxtzizhgotqur.supabase.co;
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4Z2p3ZGh3eHR6aXpoZ290cXVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMwMDc4MjAsImV4cCI6MjA2ODU4MzgyMH0.H-31tjjjcNAn7jpMutYZN6LLImqdsVvYoJWxhYtER84";
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -106,12 +101,15 @@
       tg.MainButton.setParams({ text: "Enviar a Telegram" });
     }
 
-    // helpers
-    const slug = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-');
+    // утилита для id чекбоксов
+    const slug = (s) => (s || '')
+      .toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .replace(/[^a-z0-9]+/g,'-');
 
-    // ───────── CARGA DE DATOS DESDE SUPABASE ─────────
+    // ───────── ЗАГРУЗКА ДАННЫХ ИЗ SUPABASE ─────────
 
-    // 1) car_marcas.marca → marcas
+    // 1) Марки авто → car_marcas.marca
     async function loadBrands() {
       const el = document.getElementById('brand');
       el.disabled = true;
@@ -126,7 +124,7 @@
         brands.map(b => `<option value="${b}">${b}</option>`).join('');
     }
 
-    // 2) film_coefficients.tipo_ppf → tipos de película (solo nombres)
+    // 2) Типы плёнки → film_coefficients.tipo_ppf
     async function loadPpfTypes() {
       const el = document.getElementById('ppf');
       el.disabled = true;
@@ -141,7 +139,7 @@
         types.map(t => `<option value="${t}">${t}</option>`).join('');
     }
 
-    // 3) price.type = 'basic' → чекбоксы, но поведение radio (один активный)
+    // 3) Блок basic → price (type = basic), поведение radio
     async function loadBasicServices() {
       const box = document.getElementById('basic-box');
       box.innerHTML = '';
@@ -160,7 +158,7 @@
         box.appendChild(row);
       });
 
-      // radio-поведение
+      // radio-поведение: можно выбрать только один basic
       box.addEventListener('change', (e) => {
         if (e.target && e.target.classList.contains('basic-item') && e.target.checked) {
           document.querySelectorAll('.basic-item').forEach(cb => {
@@ -170,7 +168,7 @@
       });
     }
 
-    // 4) price.type = 'partial' → чекбоксы, мультивыбор
+    // 4) Блок partial → price (type = partial), мультивыбор
     async function loadPartialServices() {
       const box = document.getElementById('partial-box');
       box.innerHTML = '';
@@ -190,7 +188,7 @@
       });
     }
 
-    // ───────── RECOLECCIÓN → PAYLOAD ─────────
+    // ───────── СБОР ДАННЫХ → PAYLOAD ─────────
     function payloadForWorkflow() {
       const basic = Array.from(document.querySelectorAll('.basic-item'))
         .find(i => i.checked)?.value || '';
@@ -205,7 +203,7 @@
         modelo: document.getElementById('model').value || '',
         año: document.getElementById('year').value || '',
         service_basic: basic,
-        service_partial: partial.join(', '),
+        service_partial: partial.join(', '),    // ← твой текущий формат
         marca_ppf: document.getElementById('ppf').value || '',
         check_promotion: document.getElementById('promo').checked ? 'Checked' : '',
         mode: document.querySelector('input[name="mode"]:checked')?.value || 'text'
@@ -221,7 +219,6 @@
         loadPartialServices()
       ]);
 
-      const tg = window.Telegram?.WebApp;
       if (tg) {
         tg.onEvent('mainButtonClicked', () => {
           tg.sendData(JSON.stringify(payloadForWorkflow()));
