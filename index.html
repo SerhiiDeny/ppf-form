@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>PPF Quote — Telegram WebApp</title>
-  <!-- Tailwind (CDN) -->
+  <title>PPF Quote — WebApp</title>
+  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Telegram WebApp SDK -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -13,231 +13,23 @@
 </head>
 <body class="bg-slate-50 text-slate-900">
   <div class="max-w-2xl mx-auto p-4">
-    <h1 class="text-2xl font-bold mb-4">PPF_Barcelona Precio</h1>
-
-    <!-- ENV: fill your Supabase keys (or inject via server) -->
-    <script>
-      // IMPORTANT: replace with your own values (or inject securely)
-      const SUPABASE_URL = "https://YOUR_PROJECT.supabase.co";
-      const SUPABASE_ANON_KEY = "YOUR_PUBLIC_ANON_KEY"; // use anon public key only
-      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-      // Telegram init
-      const tg = window.Telegram?.WebApp;
-      if (tg) {
-        tg.expand();
-        tg.MainButton.setParams({ text: "Send to Bot" });
-      }
-
-      // Simple store
-      const state = {
-        brand: "",
-        model: "",
-        year: "",
-        ppf_brand: "",
-        basic_service: "",
-        partial_services: [],
-        mode: "text",
-        check_promotion: false,
-        // optional client contact fields (kept empty by default)
-        name_client: "",
-        email_client: "",
-        phone: "",
-      };
-
-      // Helpers
-      function setLoading(id, loading) {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.disabled = !!loading;
-        el.classList.toggle("opacity-50", !!loading);
-      }
-
-      function normalize(s) {
-        return (s||"").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-      }
-
-      // Populate selects from Supabase
-      async function loadBrands() {
-        setLoading('brand', true);
-        const { data, error } = await supabase
-          .from('car_coefficients')
-          .select('marca')
-          .order('marca', { ascending: true });
-        setLoading('brand', false);
-        if (error) {
-          console.error(error); return;
-        }
-        const brands = [...new Set((data||[]).map(r => r.marca))];
-        const sel = document.getElementById('brand');
-        sel.innerHTML = '<option value="">Select brand…</option>' + brands.map(b=>`<option value="${b}">${b}</option>`).join('');
-      }
-
-      async function loadModels(brand) {
-        const sel = document.getElementById('model');
-        sel.value = "";
-        sel.setAttribute('list', 'models');
-        const dl = document.getElementById('models');
-        dl.innerHTML = '';
-        if (!brand) return;
-        setLoading('model', true);
-        const { data, error } = await supabase
-          .from('car_coefficients')
-          .select('modelo')
-          .eq('marca', brand)
-          .order('modelo', { ascending: true });
-        setLoading('model', false);
-        if (error) { console.error(error); return; }
-        const models = [...new Set((data||[]).map(r => r.modelo))];
-        dl.innerHTML = models.map(m=>`<option value="${m}">`).join('');
-      }
-
-      async function loadYears(brand, model) {
-        const sel = document.getElementById('year');
-        sel.innerHTML = '<option value="">Select year…</option>';
-        if (!brand || !model) return;
-        setLoading('year', true);
-        const { data, error } = await supabase
-          .from('car_coefficients')
-          .select('año')
-          .eq('marca', brand)
-          .eq('modelo', model)
-          .order('año', { ascending: false });
-        setLoading('year', false);
-        if (error) { console.error(error); return; }
-        const years = [...new Set((data||[]).map(r => r.año))];
-        sel.innerHTML += years.map(y=>`<option value="${y}">${y}</option>`).join('');
-      }
-
-      async function loadBasicPackages() {
-        const sel = document.getElementById('basic');
-        setLoading('basic', true);
-        const { data, error } = await supabase
-          .from('price')
-          .select('service_name')
-          .ilike('type', 'basic');
-        setLoading('basic', false);
-        if (error) { console.error(error); return; }
-        const items = (data||[]).map(r => r.service_name);
-        sel.innerHTML = '<option value="">Skip</option>' + items.map(n=>`<option value="${n}">${n}</option>`).join('');
-      }
-
-      async function loadPartialList() {
-        const cont = document.getElementById('partial-box');
-        cont.innerHTML = '';
-        const { data, error } = await supabase
-          .from('price')
-          .select('service_name')
-          .ilike('type', 'partial');
-        if (error) { console.error(error); return; }
-        const items = (data||[]).map(r => r.service_name);
-        items.forEach(name => {
-          const id = 'partial-' + normalize(name).replace(/\s+/g,'-');
-          const w = document.createElement('label');
-          w.className = 'flex items-center gap-2 py-1';
-          w.innerHTML = `<input type="checkbox" class="partial-item" id="${id}" value="${name}"> <span>${name}</span>`;
-          cont.appendChild(w);
-        });
-      }
-
-      async function loadPpfBrands() {
-        // derive from existing films table distinct marca (or create a dedicated table later)
-        const sel = document.getElementById('ppf');
-        setLoading('ppf', true);
-        const { data, error } = await supabase
-          .from('films')
-          .select('marca')
-          .order('marca', { ascending: true });
-        setLoading('ppf', false);
-        if (error) { console.error(error); return; }
-        const brands = [...new Set((data||[]).map(r => r.marca))];
-        sel.innerHTML = '<option value="">Select PPF…</option>' + brands.map(b=>`<option value="${b}">${b}</option>`).join('');
-      }
-
-      function collectState() {
-        const partial = Array.from(document.querySelectorAll('.partial-item:checked')).map(i=>i.value);
-        state.brand = document.getElementById('brand').value || '';
-        state.model = document.getElementById('model').value || '';
-        state.year = document.getElementById('year').value || '';
-        state.ppf_brand = document.getElementById('ppf').value || '';
-        state.basic_service = document.getElementById('basic').value || '';
-        state.partial_services = partial;
-        state.mode = document.querySelector('input[name="mode"]:checked')?.value || 'text';
-        state.check_promotion = document.getElementById('promo').checked;
-        state.name_client = document.getElementById('name_client').value || '';
-        state.email_client = document.getElementById('email_client').value || '';
-        state.phone = document.getElementById('phone').value || '';
-        return state;
-      }
-
-      function payloadForWorkflow() {
-        const s = collectState();
-        return {
-          name_client: s.name_client,
-          email_client: s.email_client,
-          phone: s.phone,
-          marca: s.brand,
-          modelo: s.model,
-          año: s.year,
-          service_basic: s.basic_service,
-          service_partial: s.partial_services.join(', '),
-          marca_ppf: s.ppf_brand,
-          check_promotion: s.check_promotion ? 'Checked' : '',
-          mode: s.mode,
-        };
-      }
-
-      async function init() {
-        await Promise.all([
-          loadBrands(),
-          loadBasicPackages(),
-          loadPartialList(),
-          loadPpfBrands(),
-        ]);
-
-        document.getElementById('brand').addEventListener('change', (e)=>{
-          state.brand = e.target.value; loadModels(state.brand); loadYears(state.brand, state.model);
-        });
-        document.getElementById('model').addEventListener('input', (e)=>{
-          state.model = e.target.value; loadYears(state.brand, state.model);
-        });
-        document.getElementById('year').addEventListener('change', (e)=>{ state.year = e.target.value; });
-
-        // Telegram MainButton send
-        if (tg) {
-          tg.onEvent('mainButtonClicked', () => {
-            const payload = payloadForWorkflow();
-            tg.sendData(JSON.stringify(payload));
-          });
-        }
-
-        // Local submit button (if opened in browser)
-        document.getElementById('submit').addEventListener('click', ()=>{
-          const payload = payloadForWorkflow();
-          if (tg) tg.sendData(JSON.stringify(payload));
-          else alert('Payload:\n' + JSON.stringify(payload, null, 2));
-        });
-      }
-
-      document.addEventListener('DOMContentLoaded', init);
-    </script>
+    <h1 class="text-2xl font-bold mb-4">Solicitud de Presupuesto PPF</h1>
 
     <div class="space-y-4 bg-white rounded-2xl shadow p-4">
+
+      <!-- AUTO -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label class="block text-sm mb-1">Marca</label>
           <select id="brand" class="w-full border rounded-xl p-2"></select>
         </div>
         <div>
-          <label class="block text-sm mb-1">Model</label>
-          <input id="model" list="models" class="w-full border rounded-xl p-2" placeholder="Type or pick" />
-          <datalist id="models"></datalist>
+          <label class="block text-sm mb-1">Modelo</label>
+          <input id="model" class="w-full border rounded-xl p-2" placeholder="Escribe el modelo" />
         </div>
         <div>
-          <label class="block text-sm mb-1">Year</label>
-          <select id="year" class="w-full border rounded-xl p-2">
-            <option value="">Select year…</option>
-          </select>
+          <label class="block text-sm mb-1">Año</label>
+          <input id="year" type="number" inputmode="numeric" class="w-full border rounded-xl p-2" placeholder="2024" />
         </div>
         <div>
           <label class="block text-sm mb-1">Tipo de película</label>
@@ -245,52 +37,205 @@
         </div>
       </div>
 
+      <!-- SERVICIOS -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label class="block text-sm mb-1">Basic Package</label>
-          <select id="basic" class="w-full border rounded-xl p-2"></select>
+          <label class="block text-sm mb-1">Servicios básicos</label>
+          <div id="basic-box" class="grid grid-cols-1 gap-1 p-2 border rounded-xl bg-slate-50"></div>
+          <p class="text-xs text-slate-500 mt-1">Selecciona solo uno.</p>
         </div>
+        <div>
+          <label class="block text-sm mb-1">Servicios parciales</label>
+          <div id="partial-box" class="grid grid-cols-1 gap-1 max-h-64 overflow-auto p-2 border rounded-xl bg-slate-50"></div>
+        </div>
+      </div>
+
+      <!-- FORMATO RESPUESTA -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label class="block text-sm mb-1">Formato de respuesta</label>
           <div class="flex items-center gap-4 p-2 border rounded-xl">
-            <label class="inline-flex items-center gap-2"><input type="radio" name="mode" value="text" checked> <span>Mensaje</span></label>
-            <label class="inline-flex items-center gap-2"><input type="radio" name="mode" value="doc"> <span>PDF</span></label>
+            <label class="inline-flex items-center gap-2">
+              <input type="radio" name="mode" value="text" checked>
+              <span>Mensaje</span>
+            </label>
+            <label class="inline-flex items-center gap-2">
+              <input type="radio" name="mode" value="doc">
+              <span>PDF</span>
+            </label>
           </div>
         </div>
       </div>
 
-      <div>
-        <label class="block text-sm mb-1">Partial Services</label>
-        <div id="partial-box" class="grid grid-cols-1 md:grid-cols-2 gap-1 max-h-64 overflow-auto p-2 border rounded-xl bg-slate-50"></div>
-      </div>
-
+      <!-- DATOS OPCIONALES DEL CLIENTE -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-          <label class="block text-sm mb-1">Client Name (optional)</label>
-          <input id="name_client" class="w-full border rounded-xl p-2" placeholder="Name" />
+          <label class="block text-sm mb-1">Nombre (opcional)</label>
+          <input id="name_client" class="w-full border rounded-xl p-2" placeholder="Nombre" />
         </div>
         <div>
-          <label class="block text-sm mb-1">Email (optional)</label>
+          <label class="block text-sm mb-1">Email (opcional)</label>
           <input id="email_client" class="w-full border rounded-xl p-2" placeholder="Email" />
         </div>
         <div>
-          <label class="block text-sm mb-1">Phone (optional)</label>
-          <input id="phone" class="w-full border rounded-xl p-2" placeholder="Phone" />
+          <label class="block text-sm mb-1">Teléfono (opcional)</label>
+          <input id="phone" class="w-full border rounded-xl p-2" placeholder="Teléfono" />
         </div>
       </div>
 
       <div class="flex items-center gap-2">
         <input id="promo" type="checkbox" />
-        <label for="promo">I agree to receive promotions</label>
+        <label for="promo">Quiero recibir ofertas y promociones</label>
       </div>
 
       <div class="flex justify-end gap-3 pt-2">
-        <button id="submit" class="px-4 py-2 rounded-xl bg-slate-900 text-white">Send</button>
+        <button id="submit" class="px-4 py-2 rounded-xl bg-slate-900 text-white">Enviar</button>
       </div>
     </div>
-
-    <p class="text-xs text-slate-500 mt-4">All options are loaded from Supabase: brands/models/years from <code>car_coefficients</code>, PPF brands from <code>films</code>, packages & partial list from <code>price</code>.</p>
   </div>
+
+  <script>
+    // ← ЗАМЕНИ на свои значения:
+    const SUPABASE_URL = "https://pxgjwdhwxtzizhgotqur.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4Z2p3ZGh3eHR6aXpoZ290cXVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMwMDc4MjAsImV4cCI6MjA2ODU4MzgyMH0.H-31tjjjcNAn7jpMutYZN6LLImqdsVvYoJWxhYtER84";
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const tg = window.Telegram?.WebApp;
+    if (tg) {
+      tg.expand();
+      tg.MainButton.setParams({ text: "Enviar a Telegram" });
+    }
+
+    // helpers
+    const slug = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-');
+
+    // ───────── CARGA DE DATOS DESDE SUPABASE ─────────
+
+    // 1) car_marcas.marca → marcas
+    async function loadBrands() {
+      const el = document.getElementById('brand');
+      el.disabled = true;
+      const { data, error } = await supabase
+        .from('car_marcas')
+        .select('marca')
+        .order('marca', { ascending: true });
+      el.disabled = false;
+      if (error) { console.error(error); return; }
+      const brands = (data || []).map(r => r.marca);
+      el.innerHTML = '<option value="">Selecciona la marca…</option>' +
+        brands.map(b => `<option value="${b}">${b}</option>`).join('');
+    }
+
+    // 2) film_coefficients.tipo_ppf → tipos de película (solo nombres)
+    async function loadPpfTypes() {
+      const el = document.getElementById('ppf');
+      el.disabled = true;
+      const { data, error } = await supabase
+        .from('film_coefficients')
+        .select('tipo_ppf')
+        .order('tipo_ppf', { ascending: true });
+      el.disabled = false;
+      if (error) { console.error(error); return; }
+      const types = [...new Set((data || []).map(r => r.tipo_ppf))];
+      el.innerHTML = '<option value="">Selecciona tipo de película…</option>' +
+        types.map(t => `<option value="${t}">${t}</option>`).join('');
+    }
+
+    // 3) price.type = 'basic' → чекбоксы, но поведение radio (один активный)
+    async function loadBasicServices() {
+      const box = document.getElementById('basic-box');
+      box.innerHTML = '';
+      const { data, error } = await supabase
+        .from('price')
+        .select('service_name')
+        .ilike('type', 'basic');
+      if (error) { console.error(error); return; }
+      const items = (data || []).map(r => r.service_name);
+
+      items.forEach(name => {
+        const id = 'basic-' + slug(name);
+        const row = document.createElement('label');
+        row.className = 'flex items-center gap-2 py-1';
+        row.innerHTML = `<input type="checkbox" class="basic-item" id="${id}" value="${name}"> <span>${name}</span>`;
+        box.appendChild(row);
+      });
+
+      // radio-поведение
+      box.addEventListener('change', (e) => {
+        if (e.target && e.target.classList.contains('basic-item') && e.target.checked) {
+          document.querySelectorAll('.basic-item').forEach(cb => {
+            if (cb !== e.target) cb.checked = false;
+          });
+        }
+      });
+    }
+
+    // 4) price.type = 'partial' → чекбоксы, мультивыбор
+    async function loadPartialServices() {
+      const box = document.getElementById('partial-box');
+      box.innerHTML = '';
+      const { data, error } = await supabase
+        .from('price')
+        .select('service_name')
+        .ilike('type', 'partial');
+      if (error) { console.error(error); return; }
+      const items = (data || []).map(r => r.service_name);
+
+      items.forEach(name => {
+        const id = 'partial-' + slug(name);
+        const row = document.createElement('label');
+        row.className = 'flex items-center gap-2 py-1';
+        row.innerHTML = `<input type="checkbox" class="partial-item" id="${id}" value="${name}"> <span>${name}</span>`;
+        box.appendChild(row);
+      });
+    }
+
+    // ───────── RECOLECCIÓN → PAYLOAD ─────────
+    function payloadForWorkflow() {
+      const basic = Array.from(document.querySelectorAll('.basic-item'))
+        .find(i => i.checked)?.value || '';
+      const partial = Array.from(document.querySelectorAll('.partial-item:checked'))
+        .map(i => i.value);
+
+      return {
+        name_client: document.getElementById('name_client').value || '',
+        email_client: document.getElementById('email_client').value || '',
+        phone: document.getElementById('phone').value || '',
+        marca: document.getElementById('brand').value || '',
+        modelo: document.getElementById('model').value || '',
+        año: document.getElementById('year').value || '',
+        service_basic: basic,
+        service_partial: partial.join(', '),
+        marca_ppf: document.getElementById('ppf').value || '',
+        check_promotion: document.getElementById('promo').checked ? 'Checked' : '',
+        mode: document.querySelector('input[name="mode"]:checked')?.value || 'text'
+      };
+    }
+
+    // ───────── INIT ─────────
+    async function init() {
+      await Promise.all([
+        loadBrands(),
+        loadPpfTypes(),
+        loadBasicServices(),
+        loadPartialServices()
+      ]);
+
+      const tg = window.Telegram?.WebApp;
+      if (tg) {
+        tg.onEvent('mainButtonClicked', () => {
+          tg.sendData(JSON.stringify(payloadForWorkflow()));
+        });
+      }
+
+      document.getElementById('submit').addEventListener('click', () => {
+        const payload = payloadForWorkflow();
+        if (tg) tg.sendData(JSON.stringify(payload));
+        else alert('Payload:\n' + JSON.stringify(payload, null, 2));
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
 </body>
 </html>
-
