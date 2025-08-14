@@ -3,340 +3,399 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Solicitud de Presupuesto PPF</title>
-
-  <!-- UI -->
+  <title>Solicitar Presupuesto</title>
+  <!-- Tailwind для быстрой стилизации -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Telegram WebApp SDK -->
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <!-- Supabase -->
+  <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
   <style>
-    /* Немного «тёплой» тёмной темы под твой скрин */
-    body { background: #111; color: #eee; }
-    .card { background:#1b1b1b; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
-    .field { background:#111; border:1px solid #2a2a2a; color:#eee; border-radius:10px; padding:.65rem .8rem; width:100%; }
-    .label { color:#c3c3c3; font-size:.9rem; margin-bottom:.35rem; display:block; }
-    .divider { height:3px; width: 260px; background:#d1a92b; margin: 14px 0 2px; opacity:.7; }
-    .section-title { font-weight:700; font-size:1.05rem; }
-    .hint { font-size:.8rem; color:#b9b9b9; }
-    .group-title { font-weight:600; margin: 10px 0 8px; color:#f3f3f3; }
-    .checkbox-row { display:flex; align-items:center; gap:.55rem; margin: .35rem 0; }
-    .checkbox-row input { width:18px; height:18px; accent-color:#d7b43a; }
-    .btn { background:#f2c94c; color:#111; padding:.7rem 1.1rem; border-radius:12px; font-weight:700; }
-    .btn:disabled { opacity:.5; pointer-events:none; }
-    .radio input[type="radio"]{ accent-color:#f2c94c; }
-    /* селекты */
-    select.field { background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg width='24' height='24' fill='%23aaa' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M7 10l5 5 5-5H7z'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position: right .6rem center; padding-right:2rem; }
+    /* Тонкая подстройка под макет из скрина */
+    body { background:#121212; color:#fff; }
+    .card { background:#1c1c1c; }
+    .accent { color:#f5bf00; }
+    .divider { height:3px; width:260px; background:#f5bf00; margin:16px auto 0; }
+    label.small { font-size:.95rem; color:#cfcfcf; }
+    .field, select, input[type="text"], input[type="number"], input[type="email"], input[type="tel"] {
+      background:#111; color:#eee; border:1px solid #2a2a2a; border-radius:.35rem; padding:.55rem .7rem;
+    }
+    .field:disabled { opacity:.6; }
+    .section-title { color:#eaeaea; font-weight:700; margin-top:.75rem; }
+    .hint { color:#ff6a3d; text-align:center; }
+    .btn-yellow {
+      background:#f5bf00; color:#111; font-weight:700; border-radius:9999px; padding:.7rem 2.5rem;
+    }
+    .btn-yellow:disabled { opacity:.6; }
+    .checkbox-row { display:flex; align-items:center; gap:.55rem; margin:.25rem 0; }
+    .checkbox-row input { width:18px; height:18px; accent-color:#f5bf00; }
+    .col-title { font-weight:700; color:#eaeaea; margin-bottom:.5rem; }
   </style>
 </head>
-
 <body>
-  <div class="max-w-5xl mx-auto p-5">
-    <h1 class="text-2xl font-bold mb-5">SOLICITAR PRESUPUESTO</h1>
+  <div class="max-w-3xl mx-auto px-6 py-10">
+    <h1 class="text-3xl font-extrabold text-center accent tracking-wide">SOLICITAR PRESUPUESTO</h1>
 
-    <div class="card p-5 space-y-6">
+    <div class="card rounded-2xl p-6 mt-8 space-y-6">
 
-      <!-- Авто -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <!-- AUTO -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <label class="label">Marca</label>
-          <select id="brand" class="field"></select>
+          <label class="small block mb-1">Marca de coche <span class="accent">*</span></label>
+          <select id="brand" class="w-full field">
+            <option value="">Marca</option>
+          </select>
         </div>
         <div>
-          <label class="label">Modelo</label>
-          <input id="model" class="field" placeholder="Escribe el modelo" />
+          <label class="small block mb-1">Modelo de coche <span class="accent">*</span></label>
+          <select id="model" class="w-full field">
+            <option value="">Modelo</option>
+          </select>
         </div>
         <div>
-          <label class="label">Año</label>
-          <input id="year" type="number" inputmode="numeric" class="field" placeholder="2025" />
+          <label class="small block mb-1">Año de fabricación <span class="accent">*</span></label>
+          <select id="year" class="w-full field">
+            <option value="">Año</option>
+          </select>
         </div>
         <div>
-          <label class="label">Tipo de película</label>
-          <select id="ppf" class="field"></select>
-        </div>
-      </div>
-
-      <!-- Блок 1: базовый пакет как селект -->
-      <div>
-        <div class="section-title">1. Protección completa del coche</div>
-        <div class="divider"></div>
-        <div class="mt-3 max-w-xl">
-          <select id="basic-select" class="field">
-            <option value="">Opciones de protección</option>
+          <label class="small block mb-1">Tipo de película <span class="accent">*</span></label>
+          <select id="ppf" class="w-full field">
+            <option value="">Seleccionar una opción</option>
           </select>
         </div>
       </div>
 
-      <!-- Блок 2: частичные услуги по группам -->
+      <div class="text-center mt-2">
+        <p class="hint font-semibold">Para calcular el costo, seleccione solo una opción<br/>1 o 2</p>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- 1. Protección completa -->
+      <div>
+        <div class="section-title">1. Protección completa del coche</div>
+        <select id="basic" class="w-full field mt-2">
+          <option value="">Opciones de protección</option>
+        </select>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- 2. Protección por partes -->
       <div>
         <div class="section-title">2. Protección por partes del coche</div>
-        <div class="divider"></div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-4">
-
-          <!-- Front / Rear -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-3">
+          <!-- Frontal -->
           <div>
-            <div class="group-title">Protección Frontal del Coche</div>
-            <div id="group-front"></div>
-
-            <div class="group-title mt-5">Protección Trasera del Coche</div>
-            <div id="group-rear"></div>
+            <div class="col-title">Protección Frontal del Coche</div>
+            <div id="grp-front"></div>
           </div>
 
-          <!-- Lateral / Adicional -->
+          <!-- Trasera -->
           <div>
-            <div class="group-title">Protección Lateral del Coche</div>
-            <div id="group-lateral"></div>
+            <div class="col-title">Protección Trasera del Coche</div>
+            <div id="grp-rear"></div>
+          </div>
 
-            <div class="group-title mt-5">Partes Adicionales del Coche</div>
-            <div id="group-extra"></div>
+          <!-- Lateral -->
+          <div>
+            <div class="col-title">Protección Lateral del Coche</div>
+            <div id="grp-side"></div>
+          </div>
+
+          <!-- Adicionales -->
+          <div>
+            <div class="col-title">Partes Adicionales del Coche</div>
+            <div id="grp-extra"></div>
           </div>
         </div>
       </div>
 
-      <!-- Формат ответа -->
-      <div>
-        <label class="label">Formato de respuesta</label>
-        <div class="radio flex items-center gap-6">
-          <label class="inline-flex items-center gap-2"><input type="radio" name="mode" value="text" checked> <span>Mensaje</span></label>
-          <label class="inline-flex items-center gap-2"><input type="radio" name="mode" value="doc"> <span>PDF</span></label>
+      <!-- CONTACTO -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+        <div>
+          <label class="small block mb-1">Nombre <span class="accent">*</span></label>
+          <input id="name_client" class="w-full field" type="text" placeholder="Nombre" />
+        </div>
+        <div>
+          <label class="small block mb-1">Número de teléfono <span class="accent">*</span></label>
+          <input id="phone" class="w-full field" type="tel" placeholder="700 00 00 00" />
+        </div>
+        <div class="md:col-span-2">
+          <label class="small block mb-1">E-mail <span class="accent">*</span></label>
+          <input id="email_client" class="w-full field" type="email" placeholder="email@dominio.com" />
         </div>
       </div>
 
-      <!-- Клиент -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <div>
-          <label class="label">Nombre</label>
-          <input id="name_client" class="field" placeholder="Nombre" />
-        </div>
-        <div>
-          <label class="label">Email</label>
-          <input id="email_client" class="field" placeholder="Email" />
-        </div>
-        <div>
-          <label class="label">Teléfono</label>
-          <input id="phone" class="field" placeholder="Teléfono" />
+      <!-- reCAPTCHA placeholder (если нужно — подключишь свой скрипт) -->
+      <div class="mt-2">
+        <div id="recaptcha" class="bg-[#0e0e0e] border border-[#2a2a2a] rounded-lg p-3 inline-block text-sm text-slate-300">
+          reCAPTCHA placeholder
         </div>
       </div>
 
-      <label class="checkbox-row mt-1">
-        <input id="promo" type="checkbox" />
-        <span class="hint">Quiero recibir ofertas y promociones</span>
-      </label>
+      <div class="flex items-center gap-2 pt-2">
+        <input id="promo" type="checkbox" class="w-4 h-4 accent-[#f5bf00]" />
+        <label for="promo" class="text-slate-300">Quiero recibir tus ofertas de descuento</label>
+      </div>
 
-      <div class="flex justify-end">
-        <button id="submit" class="btn" type="button" onclick="window.__sendNow()">Enviar</button>
+      <!-- SUBMIT -->
+      <div class="text-center pt-4">
+        <button id="submit" class="btn-yellow">Enviar</button>
+        <div id="msg" class="mt-3 text-sm"></div>
       </div>
     </div>
   </div>
 
   <script>
-    /* ================= Supabase ================= */
+    // ======= НАСТРОЙ (Supabase + n8n webhook) =======
     const SUPABASE_URL = "https://pxgjwdhwxtzizhgotqur.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4Z2p3ZGh3eHR6aXpoZ290cXVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMwMDc4MjAsImV4cCI6MjA2ODU4MzgyMH0.H-31tjjjcNAn7jpMutYZN6LLImqdsVvYoJWxhYtER84";
+    const WEBHOOK_URL = "https://<tu-n8n-host>/webhook/<id>"; // <-- поставь свой
+    // ================================================
+
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    /* ============== Telegram init (по желанию) ============== */
-    const tg = window.Telegram?.WebApp;
-    if (tg) { tg.expand(); tg.MainButton.setParams({ text: "Enviar a Telegram" }); }
+    // Сервисные штуки
+    const byId = (id) => document.getElementById(id);
+    const msg  = byId('msg');
 
-    const slug = (s='') => s.toLowerCase()
-      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-      .replace(/[^a-z0-9]+/g,'-');
+    function setMsg(text, ok=true) {
+      msg.textContent = text || '';
+      msg.style.color = ok ? '#7CFC9A' : '#ff6a3d';
+    }
 
-    /* ======= Карта групп для partial ======= */
-    const GROUPS = {
-      front: [
-        "parachoques delantero", "capó",
-        "aleta delantera derecha", "aleta delantera izquierda",
-        "faro derecho", "faro izquierdo"
-      ],
-      rear: [
-        "parachoques trasero",
-        "aleta trasera derecha", "aleta trasera izquierda",
-        "puerta del maletero"
-      ],
-      lateral: [
-        "puerta delantera derecha", "puerta delantera izquierda",
-        "puerta trasera derecha", "puerta trasera izquierda",
-        "retrovisor derecho", "retrovisor izquierdo",
-        "talonera derecha", "talonera izquierda",
-        "techo"
-      ],
-      extra: [
-        "alerón",
-        "elementos decorativos interiores",
-        "elementos exteriores en negro piano",
-        "estante del parachoques trasero",
-        "molduras exterior de ventanas",
-        "pantalla", "parabrisas", "pilares del parabrisas", "tira del techo"
-      ]
-    };
+    // Заполнить список лет (статический — как на сайте)
+    (function fillYears() {
+      const y = byId('year');
+      const now = new Date().getFullYear();
+      const from = now + 1;      // как у тебя в форме можно оставить 2025 по умолчанию
+      const to   = 2000;
+      const items = ['<option value="">Año</option>'];
+      for (let yr = from; yr >= to; yr--) items.push(`<option value="${yr}">${yr}</option>`);
+      y.innerHTML = items.join('');
+    })();
 
-    /* ======= Загрузка справочников ======= */
+    // ===== ЗАГРУЗКА ИЗ SUPABASE =====
 
+    // 1) Marca (DISTINCT из car_marcas)
     async function loadBrands() {
-      const el = document.getElementById('brand');
-      el.disabled = true;
+      const el = byId('brand'); el.disabled = true;
       try {
-        const { data } = await supabase.from('car_marcas')
+        const { data, error } = await supabase
+          .from('car_marcas')
           .select('marca')
           .order('marca', { ascending: true })
           .throwOnError();
-        const list = data?.map(r => r.marca) || [];
-        el.innerHTML = '<option value="">Marca de coche…</option>' +
-          list.map(v => `<option value="${v}">${v}</option>`).join('');
+        const brands = [...new Set((data || []).map(r => r.marca).filter(Boolean))];
+        el.innerHTML = '<option value="">Marca</option>' +
+          brands.map(b => `<option value="${b}">${b}</option>`).join('');
       } catch (e) {
-        console.error('car_marcas error:', e.message || e);
+        console.error('car_marcas[marca]:', e);
         el.innerHTML = '<option value="">Error cargando marcas</option>';
-      } finally {
-        el.disabled = false;
-      }
+      } finally { el.disabled = false; }
     }
 
-    async function loadPpf() {
-      const el = document.getElementById('ppf');
+    // 2) Modelo (по выбранной марке из car_marcas)
+    async function loadModels(brand) {
+      const el = byId('model');
       el.disabled = true;
+      el.innerHTML = '<option value="">Modelo</option>';
+      if (!brand) { el.disabled = false; return; }
+
       try {
-        const { data } = await supabase.from('film_coefficients')
+        const { data, error } = await supabase
+          .from('car_marcas')
+          .select('modelo')
+          .eq('marca', brand)
+          .order('modelo', { ascending: true })
+          .throwOnError();
+        const models = [...new Set((data || []).map(r => r.modelo).filter(Boolean))];
+        el.innerHTML = '<option value="">Modelo</option>' +
+          models.map(m => `<option value="${m}">${m}</option>`).join('');
+      } catch (e) {
+        console.error('car_marcas[modelo]:', e);
+        el.innerHTML = '<option value="">Error cargando modelos</option>';
+      } finally { el.disabled = false; }
+    }
+
+    // 3) Тип плёнки (film_coefficients.tipo_ppf)
+    async function loadFilmTypes() {
+      const el = byId('ppf'); el.disabled = true;
+      try {
+        const { data, error } = await supabase
+          .from('film_coefficients')
           .select('tipo_ppf')
           .order('tipo_ppf', { ascending: true })
           .throwOnError();
-        const types = [...new Set(data?.map(r => r.tipo_ppf) || [])];
-        el.innerHTML = '<option value="">Tipo de película…</option>' +
-          types.map(v => `<option value="${v}">${v}</option>`).join('');
+        const types = [...new Set((data || []).map(r => r.tipo_ppf).filter(Boolean))];
+        el.innerHTML = '<option value="">Seleccionar una opción</option>' +
+          types.map(t => `<option value="${t}">${t}</option>`).join('');
       } catch (e) {
-        console.error('film_coefficients error:', e.message || e);
+        console.error('film_coefficients.tipo_ppf:', e);
         el.innerHTML = '<option value="">Error cargando películas</option>';
-      } finally {
-        el.disabled = false;
-      }
+      } finally { el.disabled = false; }
     }
 
+    // 4) Protección completa (price: type=basic)
     async function loadBasicOptions() {
-      const sel = document.getElementById('basic-select');
-      sel.disabled = true;
+      const el = byId('basic'); el.disabled = true;
       try {
-        const { data } = await supabase.from('price')
+        const { data, error } = await supabase
+          .from('price')
           .select('service_name')
           .eq('type', 'basic')
           .throwOnError();
-        const items = data?.map(r => r.service_name) || [];
-        sel.innerHTML = '<option value="">Opciones de protección</option>' +
-          items.map(v => `<option value="${v}">${v}</option>`).join('');
+
+        const names = (data || []).map(r => r.service_name);
+        el.innerHTML = '<option value="">Opciones de protección</option>' +
+          names.map(n => `<option value="${n}">${n}</option>`).join('');
       } catch (e) {
-        console.error('price basic error:', e.message || e);
-      } finally {
-        sel.disabled = false;
-      }
+        console.error('price basic:', e);
+        el.innerHTML = '<option value="">Error cargando opciones</option>';
+      } finally { el.disabled = false; }
     }
 
-    function renderGroup(containerId, names) {
-      const box = document.getElementById(containerId);
-      box.innerHTML = '';
-      names.forEach(name => {
-        const id = 'partial-' + slug(name);
-        const row = document.createElement('label');
-        row.className = 'checkbox-row';
-        row.innerHTML = `<input type="checkbox" class="partial-item" id="${id}" value="${name}"><span>${name}</span>`;
-        box.appendChild(row);
-      });
+    // 5) Protección por partes (price: type=partial) — раскладка по группам
+    const GROUP_MAP = {
+      // FRONTAL
+      "parachoques delantero": "front",
+      "capó": "front",
+      "aleta delantera derecha": "front",
+      "aleta delantera izquierda": "front",
+      "faro derecho": "front",
+      "faro izquierdo": "front",
+
+      // TRASERA
+      "parachoques trasero": "rear",
+      "aleta trasera derecha": "rear",
+      "aleta trasera izquierda": "rear",
+      "puerta del maletero": "rear",
+
+      // LATERAL
+      "puerta delantera derecha": "side",
+      "puerta delantera izquierda": "side",
+      "puerta trasera derecha": "side",
+      "puerta trasera izquierda": "side",
+      "retrovisor derecho": "side",
+      "retrovisor izquierdo": "side",
+      "talonera derecha": "side",
+      "talonera izquierda": "side",
+      "techo": "side",
+
+      // ADICIONALES
+      "alerón": "extra",
+      "elementos decorativos interiores": "extra",
+      "elementos exteriores en negro piano": "extra",
+      "estante del parachoques trasero": "extra",
+      "molduras exterior de ventanas": "extra",
+      "pantalla": "extra",
+      "parabrisas": "extra",
+      "pilares del parabrisas": "extra",
+      "tira del techo": "extra"
+    };
+
+    function checkboxRow(name, id) {
+      return `<label class="checkbox-row">
+        <input type="checkbox" class="partial-item" value="${name}" id="${id}">
+        <span>${name}</span>
+      </label>`;
     }
 
     async function loadPartialGrouped() {
+      const front = byId('grp-front');
+      const rear  = byId('grp-rear');
+      const side  = byId('grp-side');
+      const extra = byId('grp-extra');
+      front.innerHTML = rear.innerHTML = side.innerHTML = extra.innerHTML = '';
+
       try {
-        // Берём именно список из price, чтобы лишние не отображать
-        const { data } = await supabase.from('price')
+        const { data, error } = await supabase
+          .from('price')
           .select('service_name')
           .eq('type', 'partial')
           .throwOnError();
-        const available = new Set((data || []).map(r => (r.service_name || '').toLowerCase().trim()));
 
-        // Оставляем только те имена, которые есть в price
-        const pick = arr => arr.filter(n => available.has(n.toLowerCase()));
+        // Разложим по группам; неизвестные — в extra
+        (data || []).forEach((r, idx) => {
+          const name = r.service_name;
+          const key = GROUP_MAP[name?.toLowerCase()] || 'extra';
+          const id  = 'p-' + idx;
 
-        renderGroup('group-front',   pick(GROUPS.front));
-        renderGroup('group-rear',    pick(GROUPS.rear));
-        renderGroup('group-lateral', pick(GROUPS.lateral));
-        renderGroup('group-extra',   pick(GROUPS.extra));
-      } catch (e) {
-        console.error('price partial error:', e.message || e);
-        ['group-front','group-rear','group-lateral','group-extra'].forEach(id=>{
-          document.getElementById(id).innerHTML =
-            '<div class="hint">Error cargando servicios parciales</div>';
+          const html = checkboxRow(name, id);
+          if      (key === 'front') front.insertAdjacentHTML('beforeend', html);
+          else if (key === 'rear')  rear.insertAdjacentHTML('beforeend',  html);
+          else if (key === 'side')  side.insertAdjacentHTML('beforeend',  html);
+          else                      extra.insertAdjacentHTML('beforeend', html);
         });
+      } catch (e) {
+        console.error('price partial:', e);
+        front.innerHTML = '<div class="text-red-400 text-sm">Error cargando servicios</div>';
       }
     }
 
-    /* ======= Сбор и отправка ======= */
-
+    // ===== СБОР И ОТПРАВКА =====
     function collectPayload() {
-      const partial = Array.from(document.querySelectorAll('.partial-item:checked')).map(i => i.value);
+      const basic = byId('basic')?.value || '';
+      const partial = Array.from(document.querySelectorAll('.partial-item:checked'))
+        .map(i => i.value);
+
       return {
-        name_client:  document.getElementById('name_client')?.value || '',
-        email_client: document.getElementById('email_client')?.value || '',
-        phone:        document.getElementById('phone')?.value || '',
-        marca:        document.getElementById('brand')?.value || '',
-        modelo:       document.getElementById('model')?.value || '',
-        año:          document.getElementById('year')?.value || '',
-        service_basic: document.getElementById('basic-select')?.value || '',
+        name_client: byId('name_client')?.value?.trim() || '',
+        email_client: byId('email_client')?.value?.trim() || '',
+        phone: byId('phone')?.value?.trim() || '',
+        marca: byId('brand')?.value || '',
+        modelo: byId('model')?.value || '',
+        año: byId('year')?.value || '',
+        service_basic: basic,
         service_partial: partial.join(', '),
-        marca_ppf:    document.getElementById('ppf')?.value || '',
-        check_promotion: document.getElementById('promo')?.checked ? 'Checked' : '',
-        mode: document.querySelector('input[name="mode"]:checked')?.value || 'text'
+        marca_ppf: byId('ppf')?.value || '',
+        check_promotion: byId('promo')?.checked ? 'Checked' : '',
+        mode: 'text' // форма сайта — только текстовый ответ; при желании добавь radio
       };
     }
 
-    // Если решим стучать напрямую в n8n — впишем сюда URL и раскомментируем fetch
-    const N8N_WEBHOOK_URL = ''; // например: 'https://your-n8n/webhook/<id>'
+    async function submitForm() {
+      setMsg('', true);
+      const btn = byId('submit');
+      btn.disabled = true;
 
-    window.__sendNow = async function() {
-      const btn = document.getElementById('submit');
       try {
-        btn.disabled = true;
-
         const payload = collectPayload();
-        // Прямая отправка в n8n (опционально):
-        // if (N8N_WEBHOOK_URL) {
-        //   const res = await fetch(N8N_WEBHOOK_URL, {
-        //     method: 'POST',
-        //     headers: { 'Content-Type': 'application/json' },
-        //     body: JSON.stringify(payload),
-        //   });
-        //   if (!res.ok) throw new Error('n8n ' + res.status);
-        // }
 
-        // Отправка в Telegram WebApp (если открыто из бота)
-        const webapp = window.Telegram?.WebApp;
-        if (webapp) {
-          webapp.sendData(JSON.stringify(payload));
-          webapp.showAlert('Solicitud enviada ✅');
-          setTimeout(() => webapp.close(), 800);
-        } else {
-          alert('Enviado:\n' + JSON.stringify(payload, null, 2));
-          console.log('Payload:', payload);
+        // простая валидация
+        if (!payload.marca || !payload.modelo || !payload.año || !payload.marca_ppf ||
+            !payload.name_client || !payload.email_client || !payload.phone) {
+          throw new Error('Por favor, rellena los campos obligatorios marcados con *');
         }
+
+        const res = await fetch(WEBHOOK_URL, {
+          method: 'POST',
+          headers: { 'Content-Type':'application/json' },
+          body: JSON.stringify({ data: payload })
+        });
+
+        if (!res.ok) throw new Error('Webhook respondió con ' + res.status);
+        setMsg('¡Formulario enviado con éxito!');
       } catch (e) {
-        console.error('send error:', e);
-        alert('❌ Error: ' + (e?.message || e));
+        console.error('submit:', e);
+        setMsg('Error: ' + (e?.message || e), false);
       } finally {
         btn.disabled = false;
       }
-    };
+    }
 
-    /* ======= init ======= */
+    // ===== INIT =====
     async function init() {
       await Promise.all([
         loadBrands(),
-        loadPpf(),
+        loadFilmTypes(),
         loadBasicOptions(),
         loadPartialGrouped()
       ]);
-      // на всякий случай дублируем обработчик
-      document.getElementById('submit')?.addEventListener('click', window.__sendNow);
-      if (tg) tg.onEvent('mainButtonClicked', () => tg.sendData(JSON.stringify(collectPayload())));
+
+      byId('brand')?.addEventListener('change', (e) => loadModels(e.target.value || ''));
+      byId('submit')?.addEventListener('click', submitForm);
     }
     document.addEventListener('DOMContentLoaded', init);
   </script>
