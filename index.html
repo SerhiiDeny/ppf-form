@@ -7,16 +7,12 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <style>
-    /* На случай, если Tailwind не подгрузится — базовый вид */
-    noscript, .no-tailwind { font-family: system-ui, sans-serif; }
-  </style>
 </head>
 <body class="bg-slate-50 text-slate-900">
   <div class="max-w-2xl mx-auto p-4">
     <h1 class="text-2xl font-bold mb-4">Solicitud de Presupuesto PPF</h1>
 
-    <div class="space-y-4 bg-white rounded-2xl shadow p-4" id="form-root">
+    <div class="space-y-4 bg-white rounded-2xl shadow p-4">
 
       <!-- AUTO -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -66,7 +62,7 @@
         </div>
       </div>
 
-      <!-- CLIENTE -->
+      <!-- DATOS DEL CLIENTE (opcionales) -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <label class="block text-sm mb-1">Nombre</label>
@@ -88,19 +84,15 @@
       </div>
 
       <div class="flex justify-end gap-3 pt-2">
-        <!-- «Неубиваемая» кнопка -->
-        <button type="button" id="submit" onclick="window.__sendNow()" class="px-4 py-2 rounded-xl bg-slate-900 text-white">
-          Enviar
-        </button>
+        <button id="submit" class="px-4 py-2 rounded-xl bg-slate-900 text-white">Enviar</button>
       </div>
     </div>
   </div>
 
   <script>
-    // ====== ЗАМЕНИ на свои значения ======
-    const SUPABASE_URL = "https://YOUR_PROJECT.supabase.co";
-    const SUPABASE_ANON_KEY = "YOUR_PUBLIC_ANON_KEY";
-    // =====================================
+    // ← ВСТАВЬ сюда свои значения:
+    const SUPABASE_URL = "https://pxgjwdhwxtzizhgotqur.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4Z2p3ZGh3eHR6aXpoZ290cXVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMwMDc4MjAsImV4cCI6MjA2ODU4MzgyMH0.H-31tjjjcNAn7jpMutYZN6LLImqdsVvYoJWxhYtER84";
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const tg = window.Telegram?.WebApp;
@@ -109,10 +101,13 @@
       tg.MainButton.setParams({ text: "Enviar a Telegram" });
     }
 
+    // утилита для id чекбоксов
     const slug = (s) => (s || '')
       .toLowerCase()
       .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
       .replace(/[^a-z0-9]+/g,'-');
+
+    // ───────── ЗАГРУЗКА ДАННЫХ ИЗ SUPABASE С ОТЛОВОМ ОШИБОК ─────────
 
     async function loadBrands() {
       const el = document.getElementById('brand');
@@ -129,7 +124,7 @@
           brands.map(b => `<option value="${b}">${b}</option>`).join('');
         console.log('OK brands:', brands.length);
       } catch (err) {
-        console.error('car_marcas error:', err.message || err);
+        console.error('Ошибка при загрузке car_marcas:', err.message || err);
         el.innerHTML = '<option value="">Error cargando marcas</option>';
       } finally {
         el.disabled = false;
@@ -151,7 +146,7 @@
           types.map(t => `<option value="${t}">${t}</option>`).join('');
         console.log('OK film types:', types.length);
       } catch (err) {
-        console.error('film_coefficients error:', err.message || err);
+        console.error('Ошибка при загрузке film_coefficients:', err.message || err);
         el.innerHTML = '<option value="">Error cargando películas</option>';
       } finally {
         el.disabled = false;
@@ -166,7 +161,7 @@
         const { data } = await supabase
           .from('price')
           .select('service_name')
-          .eq('type', 'basic')
+          .eq('type', 'basic')     // быстрее чем ilike
           .throwOnError();
         const items = (data || []).map(r => r.service_name);
         items.forEach(name => {
@@ -184,7 +179,7 @@
         }, { once: true });
         console.log('OK basic services:', items.length);
       } catch (err) {
-        console.error('price basic error:', err.message || err);
+        console.error('Ошибка при загрузке price (basic):', err.message || err);
         box.innerHTML = '<div class="text-sm text-red-600">Error cargando servicios básicos</div>';
       }
     }
@@ -209,48 +204,34 @@
         });
         console.log('OK partial services:', items.length);
       } catch (err) {
-        console.error('price partial error:', err.message || err);
+        console.error('Ошибка при загрузке price (partial):', err.message || err);
         box.innerHTML = '<div class="text-sm text-red-600">Error cargando servicios parciales</div>';
       }
     }
 
-    function collectPayload() {
+    // ───────── СБОР ПОЛЕЙ → PAYLOAD ─────────
+    function payloadForWorkflow() {
       const basic = Array.from(document.querySelectorAll('.basic-item'))
         .find(i => i.checked)?.value || '';
       const partial = Array.from(document.querySelectorAll('.partial-item:checked'))
         .map(i => i.value);
+
       return {
-        name_client: document.getElementById('name_client')?.value || '',
-        email_client: document.getElementById('email_client')?.value || '',
-        phone: document.getElementById('phone')?.value || '',
-        marca: document.getElementById('brand')?.value || '',
-        modelo: document.getElementById('model')?.value || '',
-        año: document.getElementById('year')?.value || '',
+        name_client: document.getElementById('name_client').value || '',
+        email_client: document.getElementById('email_client').value || '',
+        phone: document.getElementById('phone').value || '',
+        marca: document.getElementById('brand').value || '',
+        modelo: document.getElementById('model').value || '',
+        año: document.getElementById('year').value || '',
         service_basic: basic,
         service_partial: partial.join(', '),
-        marca_ppf: document.getElementById('ppf')?.value || '',
-        check_promotion: document.getElementById('promo')?.checked ? 'Checked' : '',
+        marca_ppf: document.getElementById('ppf').value || '',
+        check_promotion: document.getElementById('promo').checked ? 'Checked' : '',
         mode: document.querySelector('input[name="mode"]:checked')?.value || 'text'
       };
     }
 
-    // Глобальный обработчик кнопки — срабатывает всегда
-    window.__sendNow = function () {
-      try {
-        const payload = collectPayload();
-        const webapp = window.Telegram?.WebApp;
-        if (webapp) {
-          webapp.sendData(JSON.stringify(payload));
-        } else {
-          alert('Payload:\n' + JSON.stringify(payload, null, 2));
-          console.log('Payload (outside Telegram):', payload);
-        }
-      } catch (err) {
-        console.error('send error:', err);
-        alert('Ошибка при отправке: ' + (err?.message || err));
-      }
-    };
-
+    // ───────── INIT ─────────
     async function init() {
       await Promise.all([
         loadBrands(),
@@ -259,15 +240,19 @@
         loadPartialServices()
       ]);
 
-      // Дополнительно вешаем обработчик (но есть и onclick)
-      document.getElementById('submit')?.addEventListener('click', window.__sendNow);
-
       if (tg) {
-        tg.onEvent('mainButtonClicked', () => tg.sendData(JSON.stringify(collectPayload())));
+        tg.onEvent('mainButtonClicked', () => {
+          tg.sendData(JSON.stringify(payloadForWorkflow()));
+        });
       }
+      document.getElementById('submit').addEventListener('click', () => {
+        const payload = payloadForWorkflow();
+        if (tg) tg.sendData(JSON.stringify(payload));
+        else alert('Payload:\n' + JSON.stringify(payload, null, 2));
+      });
     }
-
     document.addEventListener('DOMContentLoaded', init);
   </script>
 </body>
 </html>
+
