@@ -9,7 +9,6 @@
   <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    /* Тонкая подстройка под макет из скрина */
     body { background:#121212; color:#fff; }
     .card { background:#1c1c1c; }
     .accent { color:#f5bf00; }
@@ -21,9 +20,7 @@
     .field:disabled { opacity:.6; }
     .section-title { color:#eaeaea; font-weight:700; margin-top:.75rem; }
     .hint { color:#ff6a3d; text-align:center; }
-    .btn-yellow {
-      background:#f5bf00; color:#111; font-weight:700; border-radius:9999px; padding:.7rem 2.5rem;
-    }
+    .btn-yellow { background:#f5bf00; color:#111; font-weight:700; border-radius:9999px; padding:.7rem 2.5rem; }
     .btn-yellow:disabled { opacity:.6; }
     .checkbox-row { display:flex; align-items:center; gap:.55rem; margin:.25rem 0; }
     .checkbox-row input { width:18px; height:18px; accent-color:#f5bf00; }
@@ -127,7 +124,7 @@
         </div>
       </div>
 
-      <!-- reCAPTCHA placeholder (если нужно — подключишь свой скрипт) -->
+      <!-- reCAPTCHA placeholder -->
       <div class="mt-2">
         <div id="recaptcha" class="bg-[#0e0e0e] border border-[#2a2a2a] rounded-lg p-3 inline-block text-sm text-slate-300">
           reCAPTCHA placeholder
@@ -148,45 +145,53 @@
   </div>
 
   <script>
-    // ======= НАСТРОЙ (Supabase + n8n webhook) =======
+    // ========= ЗАМЕНИ НА СВОИ ЗНАЧЕНИЯ =========
     const SUPABASE_URL = "https://pxgjwdhwxtzizhgotqur.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4Z2p3ZGh3eHR6aXpoZ290cXVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMwMDc4MjAsImV4cCI6MjA2ODU4MzgyMH0.H-31tjjjcNAn7jpMutYZN6LLImqdsVvYoJWxhYtER84";
-    const WEBHOOK_URL = "https://<tu-n8n-host>/webhook/<id>"; // <-- поставь свой
-    // ================================================
+    const WEBHOOK_URL = "https://<tu-n8n-host>/webhook/<id>"; // ← твой n8n webhook
+    // ==========================================
 
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // Сервисные штуки
+    // Утилиты
     const byId = (id) => document.getElementById(id);
     const msg  = byId('msg');
 
-    function setMsg(text, ok=true) {
+    function setMsg(text, ok = true) {
       msg.textContent = text || '';
       msg.style.color = ok ? '#7CFC9A' : '#ff6a3d';
     }
 
-    // Заполнить список лет (статический — как на сайте)
+    // Нормализация строк (убираем акценты, регистр и лишние пробелы)
+    const norm = (s) =>
+      (s || '')
+        .toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .trim();
+
+    // Заполнить список лет
     (function fillYears() {
       const y = byId('year');
       const now = new Date().getFullYear();
-      const from = now + 1;      // как у тебя в форме можно оставить 2025 по умолчанию
+      const from = now + 1;               // как в твоём макете — «следующий год» сверху
       const to   = 2000;
       const items = ['<option value="">Año</option>'];
       for (let yr = from; yr >= to; yr--) items.push(`<option value="${yr}">${yr}</option>`);
       y.innerHTML = items.join('');
     })();
 
-    // ===== ЗАГРУЗКА ИЗ SUPABASE =====
+    // ===== ЗАГРУЗКА ДАННЫХ ИЗ SUPABASE =====
 
     // 1) Marca (DISTINCT из car_marcas)
     async function loadBrands() {
       const el = byId('brand'); el.disabled = true;
       try {
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from('car_marcas')
           .select('marca')
           .order('marca', { ascending: true })
           .throwOnError();
+
         const brands = [...new Set((data || []).map(r => r.marca).filter(Boolean))];
         el.innerHTML = '<option value="">Marca</option>' +
           brands.map(b => `<option value="${b}">${b}</option>`).join('');
@@ -204,12 +209,13 @@
       if (!brand) { el.disabled = false; return; }
 
       try {
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from('car_marcas')
           .select('modelo')
           .eq('marca', brand)
           .order('modelo', { ascending: true })
           .throwOnError();
+
         const models = [...new Set((data || []).map(r => r.modelo).filter(Boolean))];
         el.innerHTML = '<option value="">Modelo</option>' +
           models.map(m => `<option value="${m}">${m}</option>`).join('');
@@ -223,11 +229,12 @@
     async function loadFilmTypes() {
       const el = byId('ppf'); el.disabled = true;
       try {
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from('film_coefficients')
           .select('tipo_ppf')
           .order('tipo_ppf', { ascending: true })
           .throwOnError();
+
         const types = [...new Set((data || []).map(r => r.tipo_ppf).filter(Boolean))];
         el.innerHTML = '<option value="">Seleccionar una opción</option>' +
           types.map(t => `<option value="${t}">${t}</option>`).join('');
@@ -241,7 +248,7 @@
     async function loadBasicOptions() {
       const el = byId('basic'); el.disabled = true;
       try {
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from('price')
           .select('service_name')
           .eq('type', 'basic')
@@ -256,43 +263,43 @@
       } finally { el.disabled = false; }
     }
 
-    // 5) Protección por partes (price: type=partial) — раскладка по группам
+    // 5) Protección por partes (price: type=partial) — устойчивое распределение по группам
     const GROUP_MAP = {
       // FRONTAL
-      "parachoques delantero": "front",
-      "capó": "front",
-      "aleta delantera derecha": "front",
-      "aleta delantera izquierda": "front",
-      "faro derecho": "front",
-      "faro izquierdo": "front",
+      [norm("parachoques delantero")]: "front",
+      [norm("capó")]: "front",
+      [norm("aleta delantera derecha")]: "front",
+      [norm("aleta delantera izquierda")]: "front",
+      [norm("faro derecho")]: "front",
+      [norm("faro izquierdo")]: "front",
 
       // TRASERA
-      "parachoques trasero": "rear",
-      "aleta trasera derecha": "rear",
-      "aleta trasera izquierda": "rear",
-      "puerta del maletero": "rear",
+      [norm("parachoques trasero")]: "rear",
+      [norm("aleta trasera derecha")]: "rear",
+      [norm("aleta trasera izquierda")]: "rear",
+      [norm("puerta del maletero")]: "rear",
 
       // LATERAL
-      "puerta delantera derecha": "side",
-      "puerta delantera izquierda": "side",
-      "puerta trasera derecha": "side",
-      "puerta trasera izquierda": "side",
-      "retrovisor derecho": "side",
-      "retrovisor izquierdo": "side",
-      "talonera derecha": "side",
-      "talonera izquierda": "side",
-      "techo": "side",
+      [norm("puerta delantera derecha")]: "side",
+      [norm("puerta delantera izquierda")]: "side",
+      [norm("puerta trasera derecha")]: "side",
+      [norm("puerta trasera izquierda")]: "side",
+      [norm("retrovisor derecho")]: "side",
+      [norm("retrovisor izquierdo")]: "side",
+      [norm("talonera derecha")]: "side",
+      [norm("talonera izquierda")]: "side",
+      [norm("techo")]: "side",
 
       // ADICIONALES
-      "alerón": "extra",
-      "elementos decorativos interiores": "extra",
-      "elementos exteriores en negro piano": "extra",
-      "estante del parachoques trasero": "extra",
-      "molduras exterior de ventanas": "extra",
-      "pantalla": "extra",
-      "parabrisas": "extra",
-      "pilares del parabrisas": "extra",
-      "tira del techo": "extra"
+      [norm("alerón")]: "extra",
+      [norm("elementos decorativos interiores")]: "extra",
+      [norm("elementos exteriores en negro piano")]: "extra",
+      [norm("estante del parachoques trasero")]: "extra",
+      [norm("molduras exterior de ventanas")]: "extra",
+      [norm("pantalla")]: "extra",
+      [norm("parabrisas")]: "extra",
+      [norm("pilares del parabrisas")]: "extra",
+      [norm("tira del techo")]: "extra"
     };
 
     function checkboxRow(name, id) {
@@ -310,19 +317,18 @@
       front.innerHTML = rear.innerHTML = side.innerHTML = extra.innerHTML = '';
 
       try {
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from('price')
           .select('service_name')
           .eq('type', 'partial')
           .throwOnError();
 
-        // Разложим по группам; неизвестные — в extra
         (data || []).forEach((r, idx) => {
-          const name = r.service_name;
-          const key = GROUP_MAP[name?.toLowerCase()] || 'extra';
-          const id  = 'p-' + idx;
-
+          const name = r.service_name || '';
+          const key  = GROUP_MAP[norm(name)] || 'extra'; // нормализуем название
+          const id   = 'p-' + idx;
           const html = checkboxRow(name, id);
+
           if      (key === 'front') front.insertAdjacentHTML('beforeend', html);
           else if (key === 'rear')  rear.insertAdjacentHTML('beforeend',  html);
           else if (key === 'side')  side.insertAdjacentHTML('beforeend',  html);
@@ -351,7 +357,7 @@
         service_partial: partial.join(', '),
         marca_ppf: byId('ppf')?.value || '',
         check_promotion: byId('promo')?.checked ? 'Checked' : '',
-        mode: 'text' // форма сайта — только текстовый ответ; при желании добавь radio
+        mode: 'text' // форма сайта — только текстовый ответ
       };
     }
 
@@ -363,7 +369,7 @@
       try {
         const payload = collectPayload();
 
-        // простая валидация
+        // Валидация
         if (!payload.marca || !payload.modelo || !payload.año || !payload.marca_ppf ||
             !payload.name_client || !payload.email_client || !payload.phone) {
           throw new Error('Por favor, rellena los campos obligatorios marcados con *');
