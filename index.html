@@ -1,13 +1,225 @@
-<script>
-  window.__sendNow = function () {
-    try {
-      // Сбор данных (совместимо с твоим n8n)
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PPF Quote — WebApp</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    /* На случай, если Tailwind не подгрузится — базовый вид */
+    noscript, .no-tailwind { font-family: system-ui, sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+  <div class="max-w-2xl mx-auto p-4">
+    <h1 class="text-2xl font-bold mb-4">Solicitud de Presupuesto PPF</h1>
+
+    <div class="space-y-4 bg-white rounded-2xl shadow p-4" id="form-root">
+
+      <!-- AUTO -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm mb-1">Marca</label>
+          <select id="brand" class="w-full border rounded-xl p-2"></select>
+        </div>
+        <div>
+          <label class="block text-sm mb-1">Modelo</label>
+          <input id="model" class="w-full border rounded-xl p-2" placeholder="Escribe el modelo" />
+        </div>
+        <div>
+          <label class="block text-sm mb-1">Año</label>
+          <input id="year" type="number" inputmode="numeric" class="w-full border rounded-xl p-2" placeholder="2025" />
+        </div>
+        <div>
+          <label class="block text-sm mb-1">Tipo de película</label>
+          <select id="ppf" class="w-full border rounded-xl p-2"></select>
+        </div>
+      </div>
+
+      <!-- SERVICIOS -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm mb-1">Servicios básicos</label>
+          <div id="basic-box" class="grid grid-cols-1 gap-1 p-2 border rounded-xl bg-slate-50"></div>
+          <p class="text-xs text-slate-500 mt-1">Selecciona solo uno.</p>
+        </div>
+        <div>
+          <label class="block text-sm mb-1">Servicios parciales</label>
+          <div id="partial-box" class="grid grid-cols-1 gap-1 max-h-64 overflow-auto p-2 border rounded-xl bg-slate-50"></div>
+        </div>
+      </div>
+
+      <!-- FORMATO DE RESPUESTA -->
+      <div>
+        <label class="block text-sm mb-1">Formato de respuesta</label>
+        <div class="flex items-center gap-4 p-2 border rounded-xl">
+          <label class="inline-flex items-center gap-2">
+            <input type="radio" name="mode" value="text" checked>
+            <span>Mensaje</span>
+          </label>
+          <label class="inline-flex items-center gap-2">
+            <input type="radio" name="mode" value="doc">
+            <span>PDF</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- CLIENTE -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label class="block text-sm mb-1">Nombre</label>
+          <input id="name_client" class="w-full border rounded-xl p-2" placeholder="Nombre" />
+        </div>
+        <div>
+          <label class="block text-sm mb-1">Email</label>
+          <input id="email_client" class="w-full border rounded-xl p-2" placeholder="Email" />
+        </div>
+        <div>
+          <label class="block text-sm mb-1">Teléfono</label>
+          <input id="phone" class="w-full border rounded-xl p-2" placeholder="Teléfono" />
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <input id="promo" type="checkbox" />
+        <label for="promo">Quiero recibir ofertas y promociones</label>
+      </div>
+
+      <div class="flex justify-end gap-3 pt-2">
+        <!-- «Неубиваемая» кнопка -->
+        <button type="button" id="submit" onclick="window.__sendNow()" class="px-4 py-2 rounded-xl bg-slate-900 text-white">
+          Enviar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ====== ЗАМЕНИ на свои значения ======
+    const SUPABASE_URL = "https://YOUR_PROJECT.supabase.co";
+    const SUPABASE_ANON_KEY = "YOUR_PUBLIC_ANON_KEY";
+    // =====================================
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const tg = window.Telegram?.WebApp;
+    if (tg) {
+      tg.expand();
+      tg.MainButton.setParams({ text: "Enviar a Telegram" });
+    }
+
+    const slug = (s) => (s || '')
+      .toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .replace(/[^a-z0-9]+/g,'-');
+
+    async function loadBrands() {
+      const el = document.getElementById('brand');
+      el.disabled = true;
+      try {
+        console.log('LOAD brands…');
+        const { data } = await supabase
+          .from('car_marcas')
+          .select('marca')
+          .order('marca', { ascending: true })
+          .throwOnError();
+        const brands = (data || []).map(r => r.marca);
+        el.innerHTML = '<option value="">Selecciona la marca…</option>' +
+          brands.map(b => `<option value="${b}">${b}</option>`).join('');
+        console.log('OK brands:', brands.length);
+      } catch (err) {
+        console.error('car_marcas error:', err.message || err);
+        el.innerHTML = '<option value="">Error cargando marcas</option>';
+      } finally {
+        el.disabled = false;
+      }
+    }
+
+    async function loadPpfTypes() {
+      const el = document.getElementById('ppf');
+      el.disabled = true;
+      try {
+        console.log('LOAD film types…');
+        const { data } = await supabase
+          .from('film_coefficients')
+          .select('tipo_ppf')
+          .order('tipo_ppf', { ascending: true })
+          .throwOnError();
+        const types = [...new Set((data || []).map(r => r.tipo_ppf))];
+        el.innerHTML = '<option value="">Selecciona tipo de película…</option>' +
+          types.map(t => `<option value="${t}">${t}</option>`).join('');
+        console.log('OK film types:', types.length);
+      } catch (err) {
+        console.error('film_coefficients error:', err.message || err);
+        el.innerHTML = '<option value="">Error cargando películas</option>';
+      } finally {
+        el.disabled = false;
+      }
+    }
+
+    async function loadBasicServices() {
+      const box = document.getElementById('basic-box');
+      box.innerHTML = '';
+      try {
+        console.log('LOAD basic services…');
+        const { data } = await supabase
+          .from('price')
+          .select('service_name')
+          .eq('type', 'basic')
+          .throwOnError();
+        const items = (data || []).map(r => r.service_name);
+        items.forEach(name => {
+          const id = 'basic-' + slug(name);
+          const row = document.createElement('label');
+          row.className = 'flex items-center gap-2 py-1';
+          row.innerHTML = `<input type="checkbox" class="basic-item" id="${id}" value="${name}"> <span>${name}</span>`;
+          box.appendChild(row);
+        });
+        // radio-поведение
+        box.addEventListener('change', (e) => {
+          if (e.target?.classList.contains('basic-item') && e.target.checked) {
+            document.querySelectorAll('.basic-item').forEach(cb => { if (cb !== e.target) cb.checked = false; });
+          }
+        }, { once: true });
+        console.log('OK basic services:', items.length);
+      } catch (err) {
+        console.error('price basic error:', err.message || err);
+        box.innerHTML = '<div class="text-sm text-red-600">Error cargando servicios básicos</div>';
+      }
+    }
+
+    async function loadPartialServices() {
+      const box = document.getElementById('partial-box');
+      box.innerHTML = '';
+      try {
+        console.log('LOAD partial services…');
+        const { data } = await supabase
+          .from('price')
+          .select('service_name')
+          .eq('type', 'partial')
+          .throwOnError();
+        const items = (data || []).map(r => r.service_name);
+        items.forEach(name => {
+          const id = 'partial-' + slug(name);
+          const row = document.createElement('label');
+          row.className = 'flex items-center gap-2 py-1';
+          row.innerHTML = `<input type="checkbox" class="partial-item" id="${id}" value="${name}"> <span>${name}</span>`;
+          box.appendChild(row);
+        });
+        console.log('OK partial services:', items.length);
+      } catch (err) {
+        console.error('price partial error:', err.message || err);
+        box.innerHTML = '<div class="text-sm text-red-600">Error cargando servicios parciales</div>';
+      }
+    }
+
+    function collectPayload() {
       const basic = Array.from(document.querySelectorAll('.basic-item'))
         .find(i => i.checked)?.value || '';
       const partial = Array.from(document.querySelectorAll('.partial-item:checked'))
         .map(i => i.value);
-
-      const payload = {
+      return {
         name_client: document.getElementById('name_client')?.value || '',
         email_client: document.getElementById('email_client')?.value || '',
         phone: document.getElementById('phone')?.value || '',
@@ -20,20 +232,42 @@
         check_promotion: document.getElementById('promo')?.checked ? 'Checked' : '',
         mode: document.querySelector('input[name="mode"]:checked')?.value || 'text'
       };
+    }
 
-      const tg = window.Telegram?.WebApp;
+    // Глобальный обработчик кнопки — срабатывает всегда
+    window.__sendNow = function () {
+      try {
+        const payload = collectPayload();
+        const webapp = window.Telegram?.WebApp;
+        if (webapp) {
+          webapp.sendData(JSON.stringify(payload));
+        } else {
+          alert('Payload:\n' + JSON.stringify(payload, null, 2));
+          console.log('Payload (outside Telegram):', payload);
+        }
+      } catch (err) {
+        console.error('send error:', err);
+        alert('Ошибка при отправке: ' + (err?.message || err));
+      }
+    };
+
+    async function init() {
+      await Promise.all([
+        loadBrands(),
+        loadPpfTypes(),
+        loadBasicServices(),
+        loadPartialServices()
+      ]);
+
+      // Дополнительно вешаем обработчик (но есть и onclick)
+      document.getElementById('submit')?.addEventListener('click', window.__sendNow);
 
       if (tg) {
-        // если открыто внутри Telegram WebApp — отправляем в бота
-        tg.sendData(JSON.stringify(payload));
-      } else {
-        // если открыто как обычная страница — просто показываем, что уйдёт
-        alert('Payload:\n' + JSON.stringify(payload, null, 2));
-        console.log('Payload (outside Telegram):', payload);
+        tg.onEvent('mainButtonClicked', () => tg.sendData(JSON.stringify(collectPayload())));
       }
-    } catch (err) {
-      console.error('Ошибка при отправке:', err);
-      alert('Ошибка при отправке: ' + (err?.message || err));
     }
-  };
-</script>
+
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
