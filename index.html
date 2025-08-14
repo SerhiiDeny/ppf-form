@@ -235,21 +235,55 @@
     }
 
     // Глобальный обработчик кнопки — срабатывает всегда
-    window.__sendNow = function () {
-      try {
-        const payload = collectPayload();
-        const webapp = window.Telegram?.WebApp;
-        if (webapp) {
-          webapp.sendData(JSON.stringify(payload));
-        } else {
-          alert('Payload:\n' + JSON.stringify(payload, null, 2));
-          console.log('Payload (outside Telegram):', payload);
-        }
-      } catch (err) {
-        console.error('send error:', err);
-        alert('Ошибка при отправке: ' + (err?.message || err));
+    // Глобальный обработчик кнопки — срабатывает всегда
+window.__sendNow = async function () {
+  const btn = document.getElementById('submit');
+  try {
+    // анти-двойной клик
+    if (btn) {
+      btn.disabled = true;
+      btn.classList.add('opacity-50', 'pointer-events-none');
+    }
+
+    const payload = collectPayload();
+    const webapp = window.Telegram?.WebApp;
+
+    // (необязательно) прямой POST в n8n — если указал N8N_WEBHOOK_URL
+    if (N8N_WEBHOOK_URL) {
+      const res = await fetch(N8N_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const t = await res.text().catch(() => '');
+        throw new Error('n8n webhook error: ' + res.status + ' ' + t);
       }
-    };
+    }
+
+    if (webapp) {
+      // отправка в бота (обязательно для сценария WebApp → бот → n8n)
+      webapp.sendData(JSON.stringify(payload));
+      // визуальное подтверждение
+      webapp.showAlert('Solicitud enviada ✅');
+      // аккуратно закрываем окно через ~0.8 сек
+      setTimeout(() => webapp.close(), 800);
+    } else {
+      // если страница открыта вне Telegram — просто показать, что ушло
+      alert('Enviado:\n' + JSON.stringify(payload, null, 2));
+      console.log('Payload (outside Telegram):', payload);
+    }
+  } catch (err) {
+    console.error('send error:', err);
+    alert('Ошибка при отправке: ' + (err?.message || err));
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.classList.remove('opacity-50', 'pointer-events-none');
+    }
+  }
+};
+
 
     async function init() {
       await Promise.all([
@@ -271,3 +305,4 @@
   </script>
 </body>
 </html>
+
