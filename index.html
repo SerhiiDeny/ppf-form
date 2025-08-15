@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Solicitar Presupuesto</title>
-  <!-- Tailwind для быстрой стилизации -->
+  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -124,8 +124,6 @@
         </div>
       </div>
 
-    
-
       <div class="flex items-center gap-2 pt-2">
         <input id="promo" type="checkbox" class="w-4 h-4 accent-[#f5bf00]" />
         <label for="promo" class="text-slate-300">Quiero recibir tus ofertas de descuento</label>
@@ -143,7 +141,7 @@
     // ========= ЗАМЕНИ НА СВОИ ЗНАЧЕНИЯ =========
     const SUPABASE_URL = "https://pxgjwdhwxtzizhgotqur.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4Z2p3ZGh3eHR6aXpoZ290cXVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMwMDc4MjAsImV4cCI6MjA2ODU4MzgyMH0.H-31tjjjcNAn7jpMutYZN6LLImqdsVvYoJWxhYtER84";
-    const WEBHOOK_URL = "https://primary-production-8e17.up.railway.app/webhook-test/0df53baa-d77f-49cf-b460-fb80afa7581e"; // ← твой n8n webhook
+    const WEBHOOK_URL = "https://primary-production-8e17.up.railway.app/webhook-test/0df53baa-d77f-49cf-b460-fb80afa7581e";
     // ==========================================
 
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -157,27 +155,26 @@
       msg.style.color = ok ? '#7CFC9A' : '#ff6a3d';
     }
 
-    // Нормализация строк (убираем акценты, регистр и лишние пробелы)
+    // Нормализация строк (для карты групп)
     const norm = (s) =>
       (s || '')
         .toLowerCase()
         .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
         .trim();
 
-    // Заполнить список лет
-    (function fillYears() {
+    // ===== Годы: теперь именованная функция, чтобы вызывать после сброса
+    function fillYears() {
       const y = byId('year');
       const now = new Date().getFullYear();
-      const from = now + 1;               // как в твоём макете — «следующий год» сверху
+      const from = now + 1;
       const to   = 2000;
       const items = ['<option value="">Año</option>'];
       for (let yr = from; yr >= to; yr--) items.push(`<option value="${yr}">${yr}</option>`);
       y.innerHTML = items.join('');
-    })();
+    }
 
     // ===== ЗАГРУЗКА ДАННЫХ ИЗ SUPABASE =====
 
-    // 1) Marca (DISTINCT из car_marcas)
     async function loadBrands() {
       const el = byId('brand'); el.disabled = true;
       try {
@@ -196,7 +193,6 @@
       } finally { el.disabled = false; }
     }
 
-    // 2) Modelo (по выбранной марке из car_marcas)
     async function loadModels(brand) {
       const el = byId('model');
       el.disabled = true;
@@ -220,7 +216,6 @@
       } finally { el.disabled = false; }
     }
 
-    // 3) Тип плёнки (film_coefficients.tipo_ppf)
     async function loadFilmTypes() {
       const el = byId('ppf'); el.disabled = true;
       try {
@@ -239,7 +234,6 @@
       } finally { el.disabled = false; }
     }
 
-    // 4) Protección completa (price: type=basic)
     async function loadBasicOptions() {
       const el = byId('basic'); el.disabled = true;
       try {
@@ -258,23 +252,17 @@
       } finally { el.disabled = false; }
     }
 
-    // 5) Protección por partes (price: type=partial) — устойчивое распределение по группам
     const GROUP_MAP = {
-      // FRONTAL
       [norm("parachoques delantero")]: "front",
       [norm("capó")]: "front",
       [norm("aleta delantera derecha")]: "front",
       [norm("aleta delantera izquierda")]: "front",
       [norm("faro derecho")]: "front",
       [norm("faro izquierdo")]: "front",
-
-      // TRASERA
       [norm("parachoques trasero")]: "rear",
       [norm("aleta trasera derecha")]: "rear",
       [norm("aleta trasera izquierda")]: "rear",
       [norm("puerta del maletero")]: "rear",
-
-      // LATERAL
       [norm("puerta delantera derecha")]: "side",
       [norm("puerta delantera izquierda")]: "side",
       [norm("puerta trasera derecha")]: "side",
@@ -284,8 +272,6 @@
       [norm("talonera derecha")]: "side",
       [norm("talonera izquierda")]: "side",
       [norm("techo")]: "side",
-
-      // ADICIONALES
       [norm("alerón")]: "extra",
       [norm("elementos decorativos interiores")]: "extra",
       [norm("elementos exteriores en negro piano")]: "extra",
@@ -297,18 +283,14 @@
       [norm("tira del techo")]: "extra"
     };
 
-    function capitalizeWords(str) {
-  return str.replace(/\b\w/g, char => char.toUpperCase());
-}
-
-function checkboxRow(name, id) {
-  const formattedName = capitalizeWords(name);
-  return `<label class="checkbox-row">
-    <input type="checkbox" class="partial-item" value="${formattedName}" id="${id}">
-    <span>${formattedName}</span>
-  </label>`;
-}
-
+    function capitalizeWords(str){ return (str||'').replace(/\b\w/g, c => c.toUpperCase()); }
+    function checkboxRow(name, id) {
+      const formattedName = capitalizeWords(name);
+      return `<label class="checkbox-row">
+        <input type="checkbox" class="partial-item" value="${formattedName}" id="${id}">
+        <span>${formattedName}</span>
+      </label>`;
+    }
 
     async function loadPartialGrouped() {
       const front = byId('grp-front');
@@ -326,7 +308,7 @@ function checkboxRow(name, id) {
 
         (data || []).forEach((r, idx) => {
           const name = r.service_name || '';
-          const key  = GROUP_MAP[norm(name)] || 'extra'; // нормализуем название
+          const key  = GROUP_MAP[norm(name)] || 'extra';
           const id   = 'p-' + idx;
           const html = checkboxRow(name, id);
 
@@ -341,7 +323,7 @@ function checkboxRow(name, id) {
       }
     }
 
-    // ===== СБОР И ОТПРАВКА =====
+    // ===== СБОР / ОТПРАВКА / СБРОС =====
     function collectPayload() {
       const basic = byId('basic')?.value || '';
       const partial = Array.from(document.querySelectorAll('.partial-item:checked'))
@@ -358,8 +340,34 @@ function checkboxRow(name, id) {
         service_partial: partial.join(', '),
         marca_ppf: byId('ppf')?.value || '',
         check_promotion: byId('promo')?.checked ? 'Checked' : '',
-        mode: 'text' // форма сайта — только текстовый ответ
+        mode: 'text'
       };
+    }
+
+    async function resetForm() {
+      // Очистить значения
+      document.querySelectorAll('input, select').forEach(el => {
+        if (el.type === 'checkbox' || el.type === 'radio') el.checked = false;
+        else el.value = '';
+      });
+
+      // Плейсхолдеры в селектах
+      byId('brand').innerHTML = '<option value="">Marca</option>';
+      byId('model').innerHTML = '<option value="">Modelo</option>';
+      byId('ppf').innerHTML   = '<option value="">Seleccionar una opción</option>';
+      byId('basic').innerHTML = '<option value="">Opciones de protección</option>';
+
+      // Чекбоксы-группы
+      ['grp-front','grp-rear','grp-side','grp-extra'].forEach(id => byId(id).innerHTML = '');
+
+      // Перезагрузить всё
+      fillYears();
+      await Promise.all([
+        loadBrands(),
+        loadFilmTypes(),
+        loadBasicOptions(),
+        loadPartialGrouped()
+      ]);
     }
 
     async function submitForm() {
@@ -370,7 +378,6 @@ function checkboxRow(name, id) {
       try {
         const payload = collectPayload();
 
-        // Валидация
         if (!payload.marca || !payload.modelo || !payload.año || !payload.marca_ppf ||
             !payload.name_client || !payload.email_client || !payload.phone) {
           throw new Error('Por favor, rellena los campos obligatorios marcados con *');
@@ -383,7 +390,9 @@ function checkboxRow(name, id) {
         });
 
         if (!res.ok) throw new Error('Webhook respondió con ' + res.status);
+
         setMsg('¡Formulario enviado con éxito!');
+        await resetForm();               // <<< СБРОС И ПЕРЕЗАГРУЗКА
       } catch (e) {
         console.error('submit:', e);
         setMsg('Error: ' + (e?.message || e), false);
@@ -394,6 +403,7 @@ function checkboxRow(name, id) {
 
     // ===== INIT =====
     async function init() {
+      fillYears();
       await Promise.all([
         loadBrands(),
         loadFilmTypes(),
@@ -408,5 +418,3 @@ function checkboxRow(name, id) {
   </script>
 </body>
 </html>
-
-
