@@ -340,8 +340,21 @@
     }
     document.addEventListener('DOMContentLoaded', init);
   </script>
+
+  <script>
+  // Скрипт для активации автозаполненных полей
+  window.addEventListener('load', () => {
+    document.querySelectorAll('input, textarea, select').forEach(el => {
+      if (el.value) {
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    });
+  });
+</script>
 </body>
 </html>
+
 
 
 
