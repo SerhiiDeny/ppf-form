@@ -4,9 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Solicitar Presupuesto</title>
-  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     body { background:#121212; color:#fff; }
@@ -82,25 +80,18 @@
         <div class="section-title">2. Protección por partes del coche</div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-3">
-          <!-- Frontal -->
           <div>
             <div class="col-title">Protección Frontal del Coche</div>
             <div id="grp-front"></div>
           </div>
-
-          <!-- Trasera -->
           <div>
             <div class="col-title">Protección Trasera del Coche</div>
             <div id="grp-rear"></div>
           </div>
-
-          <!-- Lateral -->
           <div>
             <div class="col-title">Protección Lateral del Coche</div>
             <div id="grp-side"></div>
           </div>
-
-          <!-- Adicionales -->
           <div>
             <div class="col-title">Partes Adicionales del Coche</div>
             <div id="grp-extra"></div>
@@ -138,15 +129,13 @@
   </div>
 
   <script>
-    // ========= ЗАМЕНИ НА СВОИ ЗНАЧЕНИЯ =========
+    // ========= ТВОИ ЗНАЧЕНИЯ =========
     const SUPABASE_URL = "https://pxgjwdhwxtzizhgotqur.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4Z2p3ZGh3eHR6aXpoZ290cXVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMwMDc4MjAsImV4cCI6MjA2ODU4MzgyMH0.H-31tjjjcNAn7jpMutYZN6LLImqdsVvYoJWxhYtER84";
-    const WEBHOOK_URL = "https://primary-production-8e17.up.railway.app/webhook/0df53baa-d77f-49cf-b460-fb80afa7581e";
-    // ==========================================
+    const WEBHOOK_URL = "https://primary-production-8e17.up.railway.app/webhook-test/0df53baa-d77f-49cf-b460-fb80afa7581e";
+    // =================================
 
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    // Утилиты
     const byId = (id) => document.getElementById(id);
     const msg  = byId('msg');
 
@@ -155,38 +144,26 @@
       msg.style.color = ok ? '#7CFC9A' : '#ff6a3d';
     }
 
-    // Нормализация строк (для карты групп)
     const norm = (s) =>
-      (s || '')
-        .toLowerCase()
-        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-        .trim();
+      (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
 
-    // ===== Годы: теперь именованная функция, чтобы вызывать после сброса
-    function fillYears() {
+    // Годы
+    (function fillYears() {
       const y = byId('year');
       const now = new Date().getFullYear();
-      const from = now + 1;
-      const to   = 2000;
+      const from = now + 1, to = 2000;
       const items = ['<option value="">Año</option>'];
       for (let yr = from; yr >= to; yr--) items.push(`<option value="${yr}">${yr}</option>`);
       y.innerHTML = items.join('');
-    }
+    })();
 
-    // ===== ЗАГРУЗКА ДАННЫХ ИЗ SUPABASE =====
-
+    // ===== Загрузка из Supabase =====
     async function loadBrands() {
       const el = byId('brand'); el.disabled = true;
       try {
-        const { data } = await supabase
-          .from('car_marcas')
-          .select('marca')
-          .order('marca', { ascending: true })
-          .throwOnError();
-
-        const brands = [...new Set((data || []).map(r => r.marca).filter(Boolean))];
-        el.innerHTML = '<option value="">Marca</option>' +
-          brands.map(b => `<option value="${b}">${b}</option>`).join('');
+        const { data } = await supabase.from('car_marcas').select('marca').order('marca', { ascending:true }).throwOnError();
+        const brands = [...new Set((data||[]).map(r => r.marca).filter(Boolean))];
+        el.innerHTML = '<option value="">Marca</option>' + brands.map(b => `<option value="${b}">${b}</option>`).join('');
       } catch (e) {
         console.error('car_marcas[marca]:', e);
         el.innerHTML = '<option value="">Error cargando marcas</option>';
@@ -194,22 +171,13 @@
     }
 
     async function loadModels(brand) {
-      const el = byId('model');
-      el.disabled = true;
+      const el = byId('model'); el.disabled = true;
       el.innerHTML = '<option value="">Modelo</option>';
       if (!brand) { el.disabled = false; return; }
-
       try {
-        const { data } = await supabase
-          .from('car_marcas')
-          .select('modelo')
-          .eq('marca', brand)
-          .order('modelo', { ascending: true })
-          .throwOnError();
-
-        const models = [...new Set((data || []).map(r => r.modelo).filter(Boolean))];
-        el.innerHTML = '<option value="">Modelo</option>' +
-          models.map(m => `<option value="${m}">${m}</option>`).join('');
+        const { data } = await supabase.from('car_marcas').select('modelo').eq('marca', brand).order('modelo', { ascending:true }).throwOnError();
+        const models = [...new Set((data||[]).map(r => r.modelo).filter(Boolean))];
+        el.innerHTML = '<option value="">Modelo</option>' + models.map(m => `<option value="${m}">${m}</option>`).join('');
       } catch (e) {
         console.error('car_marcas[modelo]:', e);
         el.innerHTML = '<option value="">Error cargando modelos</option>';
@@ -219,15 +187,9 @@
     async function loadFilmTypes() {
       const el = byId('ppf'); el.disabled = true;
       try {
-        const { data } = await supabase
-          .from('film_coefficients')
-          .select('tipo_ppf')
-          .order('tipo_ppf', { ascending: true })
-          .throwOnError();
-
-        const types = [...new Set((data || []).map(r => r.tipo_ppf).filter(Boolean))];
-        el.innerHTML = '<option value="">Seleccionar una opción</option>' +
-          types.map(t => `<option value="${t}">${t}</option>`).join('');
+        const { data } = await supabase.from('film_coefficients').select('tipo_ppf').order('tipo_ppf', { ascending:true }).throwOnError();
+        const types = [...new Set((data||[]).map(r => r.tipo_ppf).filter(Boolean))];
+        el.innerHTML = '<option value="">Seleccionar una opción</option>' + types.map(t => `<option value="${t}">${t}</option>`).join('');
       } catch (e) {
         console.error('film_coefficients.tipo_ppf:', e);
         el.innerHTML = '<option value="">Error cargando películas</option>';
@@ -237,15 +199,9 @@
     async function loadBasicOptions() {
       const el = byId('basic'); el.disabled = true;
       try {
-        const { data } = await supabase
-          .from('price')
-          .select('service_name')
-          .eq('type', 'basic')
-          .throwOnError();
-
-        const names = (data || []).map(r => r.service_name);
-        el.innerHTML = '<option value="">Opciones de protección</option>' +
-          names.map(n => `<option value="${n}">${n}</option>`).join('');
+        const { data } = await supabase.from('price').select('service_name').eq('type','basic').throwOnError();
+        const names = (data||[]).map(r => r.service_name);
+        el.innerHTML = '<option value="">Opciones de protección</option>' + names.map(n => `<option value="${n}">${n}</option>`).join('');
       } catch (e) {
         console.error('price basic:', e);
         el.innerHTML = '<option value="">Error cargando opciones</option>';
@@ -253,69 +209,55 @@
     }
 
     const GROUP_MAP = {
-      [norm("parachoques delantero")]: "front",
-      [norm("capó")]: "front",
-      [norm("aleta delantera derecha")]: "front",
-      [norm("aleta delantera izquierda")]: "front",
-      [norm("faro derecho")]: "front",
-      [norm("faro izquierdo")]: "front",
-      [norm("parachoques trasero")]: "rear",
-      [norm("aleta trasera derecha")]: "rear",
-      [norm("aleta trasera izquierda")]: "rear",
-      [norm("puerta del maletero")]: "rear",
-      [norm("puerta delantera derecha")]: "side",
-      [norm("puerta delantera izquierda")]: "side",
-      [norm("puerta trasera derecha")]: "side",
-      [norm("puerta trasera izquierda")]: "side",
-      [norm("retrovisor derecho")]: "side",
-      [norm("retrovisor izquierdo")]: "side",
-      [norm("talonera derecha")]: "side",
-      [norm("talonera izquierda")]: "side",
-      [norm("techo")]: "side",
-      [norm("alerón")]: "extra",
-      [norm("elementos decorativos interiores")]: "extra",
-      [norm("elementos exteriores en negro piano")]: "extra",
-      [norm("estante del parachoques trasero")]: "extra",
-      [norm("molduras exterior de ventanas")]: "extra",
-      [norm("pantalla")]: "extra",
-      [norm("parabrisas")]: "extra",
-      [norm("pilares del parabrisas")]: "extra",
-      [norm("tira del techo")]: "extra"
+      [norm("parachoques delantero")]:"front",
+      [norm("capó")]:"front",
+      [norm("aleta delantera derecha")]:"front",
+      [norm("aleta delantera izquierda")]:"front",
+      [norm("faro derecho")]:"front",
+      [norm("faro izquierdo")]:"front",
+      [norm("parachoques trasero")]:"rear",
+      [norm("aleta trasera derecha")]:"rear",
+      [norm("aleta trasera izquierda")]:"rear",
+      [norm("puerta del maletero")]:"rear",
+      [norm("puerta delantera derecha")]:"side",
+      [norm("puerta delantera izquierda")]:"side",
+      [norm("puerta trasera derecha")]:"side",
+      [norm("puerta trasera izquierda")]:"side",
+      [norm("retrovisor derecho")]:"side",
+      [norm("retrovisor izquierdo")]:"side",
+      [norm("talonera derecha")]:"side",
+      [norm("talonera izquierda")]:"side",
+      [norm("techo")]:"side",
+      [norm("alerón")]:"extra",
+      [norm("elementos decorativos interiores")]:"extra",
+      [norm("elementos exteriores en negro piano")]:"extra",
+      [norm("estante del parachoques trasero")]:"extra",
+      [norm("molduras exterior de ventanas")]:"extra",
+      [norm("pantalla")]:"extra",
+      [norm("parabrisas")]:"extra",
+      [norm("pilares del parabrisas")]:"extra",
+      [norm("tira del techo")]:"extra"
     };
 
     function capitalizeWords(str){ return (str||'').replace(/\b\w/g, c => c.toUpperCase()); }
-    function checkboxRow(name, id) {
-      const formattedName = capitalizeWords(name);
-      return `<label class="checkbox-row">
-        <input type="checkbox" class="partial-item" value="${formattedName}" id="${id}">
-        <span>${formattedName}</span>
-      </label>`;
+    function checkboxRow(name,id){
+      const n = capitalizeWords(name);
+      return `<label class="checkbox-row"><input type="checkbox" class="partial-item" value="${n}" id="${id}"><span>${n}</span></label>`;
     }
 
     async function loadPartialGrouped() {
-      const front = byId('grp-front');
-      const rear  = byId('grp-rear');
-      const side  = byId('grp-side');
-      const extra = byId('grp-extra');
+      const front = byId('grp-front'), rear = byId('grp-rear'), side = byId('grp-side'), extra = byId('grp-extra');
       front.innerHTML = rear.innerHTML = side.innerHTML = extra.innerHTML = '';
-
       try {
-        const { data } = await supabase
-          .from('price')
-          .select('service_name')
-          .eq('type', 'partial')
-          .throwOnError();
-
-        (data || []).forEach((r, idx) => {
+        const { data } = await supabase.from('price').select('service_name').eq('type','partial').throwOnError();
+        (data||[]).forEach((r,idx)=>{
           const name = r.service_name || '';
           const key  = GROUP_MAP[norm(name)] || 'extra';
-          const id   = 'p-' + idx;
-          const html = checkboxRow(name, id);
-
-          if      (key === 'front') front.insertAdjacentHTML('beforeend', html);
-          else if (key === 'rear')  rear.insertAdjacentHTML('beforeend',  html);
-          else if (key === 'side')  side.insertAdjacentHTML('beforeend',  html);
-          else                      extra.insertAdjacentHTML('beforeend', html);
+          const id = 'p-'+idx, html = checkboxRow(name,id);
+          if (key==='front') front.insertAdjacentHTML('beforeend',html);
+          else if (key==='rear') rear.insertAdjacentHTML('beforeend',html);
+          else if (key==='side') side.insertAdjacentHTML('beforeend',html);
+          else extra.insertAdjacentHTML('beforeend',html);
         });
       } catch (e) {
         console.error('price partial:', e);
@@ -323,12 +265,10 @@
       }
     }
 
-    // ===== СБОР / ОТПРАВКА / СБРОС =====
-    function collectPayload() {
+    // Сбор данных
+    function collectPayload(){
       const basic = byId('basic')?.value || '';
-      const partial = Array.from(document.querySelectorAll('.partial-item:checked'))
-        .map(i => i.value);
-
+      const partial = Array.from(document.querySelectorAll('.partial-item:checked')).map(i=>i.value);
       return {
         name_client: byId('name_client')?.value?.trim() || '',
         email_client: byId('email_client')?.value?.trim() || '',
@@ -344,78 +284,61 @@
       };
     }
 
-    async function resetForm() {
-      // Очистить значения
-      document.querySelectorAll('input, select').forEach(el => {
-        if (el.type === 'checkbox' || el.type === 'radio') el.checked = false;
-        else el.value = '';
-      });
-
-      // Плейсхолдеры в селектах
-      byId('brand').innerHTML = '<option value="">Marca</option>';
+    // <<< НОВОЕ: очистка формы после отправки >>>
+    function resetForm(){
+      byId('brand').value = '';
       byId('model').innerHTML = '<option value="">Modelo</option>';
-      byId('ppf').innerHTML   = '<option value="">Seleccionar una opción</option>';
-      byId('basic').innerHTML = '<option value="">Opciones de protección</option>';
-
-      // Чекбоксы-группы
-      ['grp-front','grp-rear','grp-side','grp-extra'].forEach(id => byId(id).innerHTML = '');
-
-      // Перезагрузить всё
-      fillYears();
-      await Promise.all([
-        loadBrands(),
-        loadFilmTypes(),
-        loadBasicOptions(),
-        loadPartialGrouped()
-      ]);
+      byId('model').disabled = false;
+      byId('year').selectedIndex = 0;
+      byId('ppf').selectedIndex = 0;
+      byId('basic').selectedIndex = 0;
+      document.querySelectorAll('.partial-item').forEach(cb => cb.checked = false);
+      ['name_client','email_client','phone'].forEach(id => byId(id).value = '');
+      byId('promo').checked = false;
+      // сообщение очистим чуть позже, чтобы пользователь увидел "успех"
     }
 
-    async function submitForm() {
+    // <<< ИЗМЕНЕНО: отправка без preflight + очистка формы >>>
+    async function submitForm(){
       setMsg('', true);
       const btn = byId('submit');
       btn.disabled = true;
 
-      try {
+      try{
         const payload = collectPayload();
 
+        // Мини-валидация
         if (!payload.marca || !payload.modelo || !payload.año || !payload.marca_ppf ||
-            !payload.name_client || !payload.email_client || !payload.phone) {
+            !payload.name_client || !payload.email_client || !payload.phone){
           throw new Error('Por favor, rellena los campos obligatorios marcados con *');
         }
 
-        const res = await fetch(WEBHOOK_URL, {
+        // ВАЖНО: без preflight -> no-cors + text/plain
+        await fetch(WEBHOOK_URL, {
           method: 'POST',
-          headers: { 'Content-Type':'application/json' },
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
           body: JSON.stringify({ data: payload })
         });
 
-        if (!res.ok) throw new Error('Webhook respondió con ' + res.status);
-
+        // Если до сюда дошли — запрос ушёл (ответ «opaque», но это ок).
         setMsg('¡Formulario enviado con éxito!');
-        await resetForm();               // <<< СБРОС И ПЕРЕЗАГРУЗКА
-      } catch (e) {
+        resetForm();
+      } catch (e){
         console.error('submit:', e);
         setMsg('Error: ' + (e?.message || e), false);
-      } finally {
+      } finally{
         btn.disabled = false;
       }
     }
 
-    // ===== INIT =====
-    async function init() {
-      fillYears();
-      await Promise.all([
-        loadBrands(),
-        loadFilmTypes(),
-        loadBasicOptions(),
-        loadPartialGrouped()
-      ]);
-
-      byId('brand')?.addEventListener('change', (e) => loadModels(e.target.value || ''));
+    // Инициализация
+    async function init(){
+      await Promise.all([loadBrands(), loadFilmTypes(), loadBasicOptions(), loadPartialGrouped()]);
+      byId('brand')?.addEventListener('change', (e)=> loadModels(e.target.value || ''));
       byId('submit')?.addEventListener('click', submitForm);
     }
     document.addEventListener('DOMContentLoaded', init);
   </script>
 </body>
 </html>
-
