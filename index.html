@@ -1974,8 +1974,9 @@
       // try to flush queued leads (best effort)
       flushPending().then(()=>{}).catch(()=>{});
 
-      // init phone widget (async)
-      await initIntlTelInput();
+      //initIntlTelInput().then(()=>{}).catch(()=>{});
+await Promise.all([ /* supabase loads */ ]);
+
 
       await Promise.all([
         loadUIFields(),
