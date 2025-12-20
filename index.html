@@ -111,27 +111,41 @@
     .row.selected .check svg { display:block; }
     .check svg { display:none; }
 
-    /* Bottom Sheet (UPDATED: transform-based + safe-area + body lock) */
-    .sheet-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:60; display:none; }
-    .sheet-backdrop.open { display:block; }
+    /* Bottom Sheet (WIX-safe) */
+    .sheet-backdrop{
+      position:fixed; inset:0;
+      background:rgba(0,0,0,.55);
+      z-index:2147483646; /* максимальный поверх Wix */
+      display:none;
+      pointer-events:auto;
+    }
+    .sheet-backdrop.open{ display:block; }
 
-    .sheet {
+    .sheet{
       position:fixed;
       left:0; right:0; bottom:0;
+
       transform: translateY(110%);
+      transform-origin: bottom;
       background:#161616;
       border-top-left-radius:18px; border-top-right-radius:18px;
       border:1px solid #2a2a2a; border-bottom:0;
-      z-index:70;
+
+      z-index:2147483647; /* выше backdrop */
       transition: transform .22s ease;
       height: min(75vh, 560px);
       overflow:auto;
       padding-bottom: env(safe-area-inset-bottom);
       -webkit-overflow-scrolling: touch;
+      pointer-events:auto;
+      display:block;
     }
-    .sheet.open { transform: translateY(0); }
+    .sheet.open{ transform: translateY(0) !important; }
 
-    body.noscroll { overflow:hidden; touch-action:none; }
+    html.noscroll, body.noscroll{
+      overflow:hidden !important;
+      touch-action:none;
+    }
 
     .grab { width:46px; height:5px; border-radius:9999px; background:#3a3a3a; margin:10px auto; }
 
@@ -399,7 +413,6 @@
             <label class="small block mb-1" for="phone">
               <span id="lbl-phone">Teléfono</span> <span id="star-phone" class="accent">*</span>
             </label>
-            <!-- UPDATED placeholder: international -->
             <input id="phone" class="w-full field" type="tel" placeholder="+34 600 00 00 00" required inputmode="tel" autocomplete="tel" />
             <div id="phone-hint" class="text-xs error mt-1 hidden"></div>
           </div>
@@ -551,6 +564,17 @@
       } catch(e){
         console.warn('Analytics tracking failed:', e);
       }
+    }
+
+    // Wix auto-height: postMessage -> Velo changes iframe height
+    function postHeightToWix(){
+      try{
+        const h = Math.max(
+          document.documentElement.scrollHeight || 0,
+          document.body.scrollHeight || 0
+        );
+        window.parent?.postMessage({ type: 'PPF_FORM_HEIGHT', h }, '*');
+      } catch(e){}
     }
 
     // ---------- UI from ui_form_fields ----------
@@ -746,6 +770,48 @@
       }
     }
 
+    // ----------------- FALLBACK QUEUE (localStorage) -----------------
+    const PENDING_KEY = `${FORM_KEY}_pending_queue_v1`;
+
+    function readPending(){
+      try{
+        const raw = localStorage.getItem(PENDING_KEY);
+        const arr = raw ? JSON.parse(raw) : [];
+        return Array.isArray(arr) ? arr : [];
+      } catch(e){
+        return [];
+      }
+    }
+
+    function writePending(arr){
+      try{
+        localStorage.setItem(PENDING_KEY, JSON.stringify(arr || []));
+      } catch(e){}
+    }
+
+    function enqueuePending(payload){
+      const arr = readPending();
+      arr.push({ ts: Date.now(), payload });
+      writePending(arr);
+    }
+
+    async function flushPending(){
+      const arr = readPending();
+      if (!arr.length) return;
+
+      const keep = [];
+      for (let i = 0; i < arr.length; i++){
+        const item = arr[i];
+        try{
+          await postToWebhook(item.payload, { silent: true });
+        } catch(e){
+          keep.push(item, ...arr.slice(i + 1));
+          break;
+        }
+      }
+      writePending(keep);
+    }
+
     // App data
     const appData = {
       centers: new Map(),
@@ -809,8 +875,8 @@
 
       stepLabelEl.textContent = stepLabelText(n);
 
-      // UPDATED: scroll to form top anchor (instead of window top)
       scrollToFormTop();
+      postHeightToWix();
 
       const heading = byId(`step-${n}`)?.querySelector('.section-title');
       if (heading){
@@ -1045,7 +1111,7 @@
         return;
       }
       wrap.innerHTML = list.map(p => {
-        const name = escapeHtml(p.name);
+        const name = escapeHtml(p.name || '');
         const selected = state.selectedPackage === p.name;
         return `
           <button type="button"
@@ -1086,6 +1152,7 @@
       const miss = step1MissingFields();
       byId('next-1').disabled = miss.length > 0;
       byId('step1-hint').textContent = miss.length ? ('Falta completar: ' + miss.join(', ') + '.') : '';
+      postHeightToWix();
     }
 
     // ----------------- FLOW STEP 2 -----------------
@@ -1111,6 +1178,7 @@
       updatePackagesInfoUI();
       updatePartialWarningUI();
       updateStep3Buttons();
+      postHeightToWix();
     }
 
     function setFlow(flow){
@@ -1135,6 +1203,7 @@
       byId('step2-hint').textContent = flow ? '' : 'Selecciona una opción.';
 
       trackEvent('flow_selected', { flow });
+      postHeightToWix();
     }
 
     // ----------------- FINISH -----------------
@@ -1189,6 +1258,8 @@
         partsBox.classList.add('hidden');
         byId('parts-warning-body').textContent = '';
       }
+
+      postHeightToWix();
     }
 
     // ----------------- STEP 3 -----------------
@@ -1215,6 +1286,7 @@
       updatePackagesInfoUI();
       updatePartialWarningUI();
       updateStep3Buttons();
+      postHeightToWix();
     }
 
     function updateStep3Buttons(){
@@ -1225,6 +1297,7 @@
       byId('next-3b').disabled = !(state.flow === 'custom' && canParts);
 
       updateViewButtonCount();
+      postHeightToWix();
     }
 
     // ----------------- PARTS -----------------
@@ -1264,6 +1337,7 @@
 
       if (!list.length){
         panel.innerHTML = `<div class="text-sm text-slate-300">No hay opciones en esta sección.</div>`;
+        postHeightToWix();
         return;
       }
 
@@ -1274,6 +1348,7 @@
       }).join('');
 
       updateViewButtonCount();
+      postHeightToWix();
     }
 
     byId('panel-list').addEventListener('click', (e)=>{
@@ -1297,23 +1372,29 @@
       byId('btn-view').disabled = (n === 0);
     }
 
-    // ----------------- SHEET (UPDATED) -----------------
+    // ----------------- SHEET (WIX-safe + height sync) -----------------
     function openSheet(){
       byId('backdrop').classList.add('open');
       byId('sheet').classList.add('open');
       byId('backdrop').setAttribute('aria-hidden','false');
+
+      document.documentElement.classList.add('noscroll');
       document.body.classList.add('noscroll');
 
-      // ensure title is visible
       byId('sheet').scrollTop = 0;
-
       renderSheet();
+
+      postHeightToWix();
     }
     function closeSheet(){
       byId('sheet').classList.remove('open');
       byId('backdrop').classList.remove('open');
       byId('backdrop').setAttribute('aria-hidden','true');
+
+      document.documentElement.classList.remove('noscroll');
       document.body.classList.remove('noscroll');
+
+      postHeightToWix();
     }
 
     function renderSheet(){
@@ -1328,6 +1409,7 @@
       if (!items.length){
         const empty = uiLabel('sheet_empty_text', 'No has seleccionado nada todavía.');
         listEl.innerHTML = `<div class="text-sm text-slate-300">${escapeHtml(empty)}</div>`;
+        postHeightToWix();
         return;
       }
 
@@ -1350,6 +1432,8 @@
           </div>
         `;
       }).join('');
+
+      postHeightToWix();
     }
 
     byId('sheet-list').addEventListener('click', (e)=>{
@@ -1379,6 +1463,7 @@
       if (!list.length){
         listEl.innerHTML = `<div class="text-sm text-slate-300">No hay opciones configuradas.</div>`;
         updateStep4Count();
+        postHeightToWix();
         return;
       }
 
@@ -1389,6 +1474,7 @@
       }).join('');
 
       updateStep4Count();
+      postHeightToWix();
     }
 
     function updateStep4Count(){
@@ -1450,6 +1536,7 @@
         el.classList.remove('hidden');
         el.textContent = text;
       }
+      postHeightToWix();
     }
 
     function validateName(){
@@ -1461,23 +1548,38 @@
       return ok;
     }
 
-    // UPDATED: phone validation via intl-tel-input only
+    function basicPhoneFallbackOk(raw){
+      const s = String(raw||'').trim();
+      if (!s) return false;
+      const digits = s.replace(/[^\d]/g,'');
+      if (digits.length < 8 || digits.length > 16) return false;
+      return true;
+    }
+
     function validatePhone(){
       const el = byId('phone');
       const raw = (el.value||'').trim();
 
-      // Required: if empty => invalid
       if (!raw){
         markField(el, false);
         setFieldHint('phone-hint', 'Introduce tu teléfono.');
         return false;
       }
 
+      // intl-tel-input not initialized -> fallback mode
       if (!iti){
-        // fallback (should not happen normally)
-        markField(el, false);
-        setFieldHint('phone-hint', 'Teléfono inválido.');
-        return false;
+        const ok = basicPhoneFallbackOk(raw);
+        markField(el, ok);
+        setFieldHint('phone-hint', ok ? '' : 'Teléfono inválido. Revisa el número.');
+        return ok;
+      }
+
+      // utils still not ready -> fallback mode
+      if (!window.intlTelInputUtils){
+        const ok = basicPhoneFallbackOk(raw);
+        markField(el, ok);
+        setFieldHint('phone-hint', ok ? '' : 'Teléfono inválido. Revisa el prefijo y el número.');
+        return ok;
       }
 
       const ok = iti.isValidNumber();
@@ -1516,10 +1618,66 @@
       return validateName() && validatePhone() && validateEmail() && validateConsent();
     }
 
-    // ----------------- Payload -----------------
+    // ----------------- intl-tel-input: wait utils + warnings + debounce -----------------
+    async function waitForIntlTelUtils(timeoutMs = 3000){
+      const start = Date.now();
+      while (Date.now() - start < timeoutMs){
+        if (window.intlTelInputUtils) return true;
+        await new Promise(r => setTimeout(r, 80));
+      }
+      return false;
+    }
+
+    async function initIntlTelInput(){
+      const phoneInput = byId('phone');
+      if (!phoneInput){
+        return;
+      }
+
+      // placeholder from UI config
+      phoneInput.placeholder = placeholderText('phone_placeholder', '+34 600 00 00 00');
+
+      if (!window.intlTelInput){
+        setFieldHint('phone-hint', 'No se pudo cargar el módulo del teléfono. Puedes escribir el número, pero la validación será limitada.');
+        return;
+      }
+
+      iti = window.intlTelInput(phoneInput, {
+        initialCountry: "es",
+        separateDialCode: false,
+        nationalMode: false,
+        autoPlaceholder: "polite",
+        formatOnDisplay: true,
+        utilsScript: "https://cdn.jsdelivr.net/npm/intl-tel-input@23.8.0/build/js/utils.js"
+      });
+
+      const utilsReady = await waitForIntlTelUtils(3500);
+      if (!utilsReady){
+        setFieldHint('phone-hint', 'Validación del teléfono: modo limitado (cargando recursos...).');
+      }
+
+      phoneInput.addEventListener('blur', validatePhone);
+
+      // debounce on input
+      let phoneT = null;
+      phoneInput.addEventListener('input', () => {
+        if (phoneT) clearTimeout(phoneT);
+        phoneT = setTimeout(() => {
+          if (!byId('phone-hint').classList.contains('hidden')) validatePhone();
+        }, 250);
+      });
+
+      phoneInput.addEventListener('countrychange', () => {
+        if (!byId('phone-hint').classList.contains('hidden')) validatePhone();
+      });
+    }
+
+    // ----------------- Payload helpers -----------------
     function getPhoneE164(){
-      if (!iti) return '';
-      try { return iti.getNumber(); } catch(e){ return ''; }
+      if (!iti){
+        return (byId('phone')?.value || '').trim();
+      }
+      try { return iti.getNumber(); } catch(e){ return (byId('phone')?.value || '').trim(); }
     }
 
     function getPhoneCountry(){
@@ -1546,7 +1704,6 @@
 
       const consentAt = new Date().toISOString();
 
-      // UPDATED: save phone in E.164 + phone_country
       const phoneE164 = getPhoneE164();
       const phoneCountry = getPhoneCountry();
 
@@ -1554,8 +1711,8 @@
         name_client: (byId('name_client')?.value || '').trim(),
         email_client: (byId('email_client')?.value || '').trim(),
 
-        phone: phoneE164,               // E.164 (+34600...)
-        phone_country: phoneCountry,    // iso2 (es, fr, de...)
+        phone: phoneE164,
+        phone_country: phoneCountry,
 
         marca: state.brand || byId('brand').value || '',
         modelo: state.model || byId('model').value || '',
@@ -1637,7 +1794,6 @@
       byId('promo').checked = false;
       byId('consent').checked = false;
 
-      // reset intl-tel-input phone field (keep default country)
       if (iti){
         byId('phone').value = '';
         try { iti.setNumber(''); } catch(e){}
@@ -1693,6 +1849,7 @@
 
       showStep(1);
       updateStep1UI();
+      postHeightToWix();
     }
 
     // ----------------- Submit protections -----------------
@@ -1718,20 +1875,9 @@
       submitSpinner.classList.remove('hidden');
 
       try{
+        // single source of truth for contact validation
         if (!step5Valid()) {
           throw new Error('Por favor completa todos los campos obligatorios correctamente.');
-        }
-
-        if (!byId('consent')?.checked){
-          validateConsent();
-          throw new Error('Debes aceptar la política de privacidad para continuar.');
-        }
-
-        // Strong guarantee: phone payload must be E.164 and valid
-        const phoneE164 = getPhoneE164();
-        if (!phoneE164 || !iti || !iti.isValidNumber()){
-          validatePhone();
-          throw new Error('Teléfono inválido. Revisa el prefijo y el número.');
         }
 
         const miss = step1MissingFields();
@@ -1766,12 +1912,27 @@
 
       } catch(e){
         console.error('submit:', e);
-        setMsg('Error: ' + (e?.message || e), false);
 
-        trackEvent('form_submit_error', {
-          flow: state.flow,
-          error: e?.message || String(e)
-        });
+        const errMsg = e?.message || String(e || '');
+
+        // Validation errors: don't enqueue
+        const isValidation = /completa|obligatorios|inválido|aceptar|faltan/i.test(errMsg);
+
+        if (isValidation){
+          setMsg('Error: ' + errMsg, false);
+          trackEvent('form_submit_validation_error', { flow: state.flow, error: errMsg });
+        } else {
+          // Network/webhook errors: enqueue lead
+          try{
+            const payload = collectPayload();
+            enqueuePending(payload);
+            setMsg('No se pudo enviar ahora. Guardamos tu solicitud y la reintentaremos automáticamente.', true);
+            trackEvent('form_submit_failed_queued', { flow: state.flow, error: errMsg });
+          } catch(qe){
+            setMsg('Error: ' + errMsg, false);
+            trackEvent('form_submit_failed_network', { flow: state.flow, error: errMsg });
+          }
+        }
       } finally {
         btn.disabled = false;
         submitText.classList.remove('hidden');
@@ -1806,43 +1967,15 @@
       });
     }
 
-    // ----------------- INIT intl-tel-input -----------------
-    function initIntlTelInput(){
-      const phoneInput = byId('phone');
-      if (!phoneInput || !window.intlTelInput) return;
-
-      iti = window.intlTelInput(phoneInput, {
-        // Spain as default, but allow any country
-        initialCountry: "es",
-        // enable geoip? (not needed now)
-        separateDialCode: false,
-        nationalMode: false, // keep international-friendly behavior
-        autoPlaceholder: "polite",
-        formatOnDisplay: true,
-        // utils.js enables isValidNumber and formatting
-        utilsScript: "https://cdn.jsdelivr.net/npm/intl-tel-input@23.8.0/build/js/utils.js"
-      });
-
-      // Validate on blur
-      phoneInput.addEventListener('blur', validatePhone);
-
-      // Re-validate on input if hint is shown
-      phoneInput.addEventListener('input', () => {
-        if (!byId('phone-hint').classList.contains('hidden')) validatePhone();
-      });
-
-      // Country change also affects validity
-      phoneInput.addEventListener('countrychange', () => {
-        if (!byId('phone-hint').classList.contains('hidden')) validatePhone();
-      });
-    }
-
     // ----------------- INIT -----------------
     async function init(){
       trackEvent('form_page_view', { referrer: document.referrer || 'direct' });
 
-      // init phone widget early
-      initIntlTelInput();
+      // try to flush queued leads (best effort)
+      flushPending().then(()=>{}).catch(()=>{});
+
+      // init phone widget (async)
+      await initIntlTelInput();
 
       await Promise.all([
         loadUIFields(),
@@ -1882,6 +2015,7 @@
         const miss = step1MissingFields();
         if (miss.length){
           byId('step1-hint').textContent = 'Falta completar: ' + miss.join(', ') + '.';
+          postHeightToWix();
           return;
         }
         byId('step1-hint').textContent = '';
@@ -1897,6 +2031,7 @@
       byId('next-2').addEventListener('click', ()=>{
         if (!state.flow){
           byId('step2-hint').textContent = 'Selecciona una opción.';
+          postHeightToWix();
           return;
         }
         byId('step2-hint').textContent = '';
@@ -1920,8 +2055,8 @@
       // Step 3 nav (packages)
       byId('back-3').addEventListener('click', ()=> showStep(2));
       byId('next-3').addEventListener('click', ()=>{
-        if (!state.selectedPackage) { byId('step3-hint').textContent = 'Selecciona un paquete.'; return; }
-        if (!state.finish_key) { byId('step3-hint').textContent = 'Selecciona el tipo de cobertura.'; return; }
+        if (!state.selectedPackage) { byId('step3-hint').textContent = 'Selecciona un paquete.'; postHeightToWix(); return; }
+        if (!state.finish_key) { byId('step3-hint').textContent = 'Selecciona el tipo de cobertura.'; postHeightToWix(); return; }
         byId('step3-hint').textContent = '';
         state.step4BackTarget = 3;
         showStep(4);
@@ -1930,8 +2065,8 @@
       // Step 3B parts nav
       byId('back-3b').addEventListener('click', ()=> showStep(2));
       byId('next-3b').addEventListener('click', ()=>{
-        if (!state.finish_key) { byId('step3-hint').textContent = 'Selecciona el tipo de cobertura.'; return; }
-        if (state.selectedParts.size === 0) { byId('step3-hint').textContent = 'Selecciona al menos una parte.'; return; }
+        if (!state.finish_key) { byId('step3-hint').textContent = 'Selecciona el tipo de cobertura.'; postHeightToWix(); return; }
+        if (state.selectedParts.size === 0) { byId('step3-hint').textContent = 'Selecciona al menos una parte.'; postHeightToWix(); return; }
         byId('step3-hint').textContent = '';
         state.step4BackTarget = 3;
         showStep(4);
@@ -1997,6 +2132,11 @@
       updateStep3Buttons();
 
       setText('next-1', uiLabel('btn_next_1', byId('next-1')?.textContent || 'Continuar'));
+
+      // final height sync
+      postHeightToWix();
+      setTimeout(postHeightToWix, 150);
+      setTimeout(postHeightToWix, 450);
     }
 
     document.addEventListener('DOMContentLoaded', init);
