@@ -8,7 +8,6 @@
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- оставил как было, но теперь не используем (form_ui исключили) -->
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
 
   <!-- Google Analytics 4 (replace with your ID) -->
@@ -36,7 +35,10 @@
 
   <style>
     body { background:#121212; color:#fff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-    .card { background:#1c1c1c; border:1px solid #2a2a2a; }
+
+    /* UPDATED: layout / “пустой экран” — частично (только min-height) */
+    .card { background:#1c1c1c; border:1px solid #2a2a2a; min-height: 520px; display:flex; flex-direction:column; }
+
     .accent { color:#f5bf00; }
     label.small { font-size:.95rem; color:#cfcfcf; }
     .field, select, input[type="text"], input[type="number"], input[type="email"], input[type="tel"], textarea {
@@ -58,7 +60,7 @@
       background: transparent; transition: background .15s, border-color .15s; cursor: pointer;
     }
     .btn-ghost:hover:not(:disabled) { background:#1a1a1a; border-color:#4a4a4a; }
-    .btn-ghost:disabled { opacity:.45; cursor:not-allowed; }
+    .btn-ghost:disabled { opacity:.45; cursor: not-allowed; }
     .hint { color:#cfcfcf; }
     .error { color:#ff6a3d; }
     .ok { color:#7CFC9A; }
@@ -146,9 +148,7 @@
       border-radius: 50%;
       animation: spin 0.6s linear infinite;
     }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 
@@ -281,7 +281,6 @@
 
         <!-- PARTS (3B embedded) -->
         <div id="block-parts" class="space-y-3 hidden">
-
           <div class="rounded-xl border border-[#2a2a2a] bg-[#121212] p-4 space-y-3">
             <div>
               <h3 id="ui-title" class="text-lg font-extrabold">
@@ -467,7 +466,8 @@
     const FORM_KEY = "quote_v2";
     // =================================
 
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // IMPORTANT: client is sb
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const byId = (id) => document.getElementById(id);
 
@@ -588,7 +588,6 @@
     }
 
     function emphasizeParen(label){
-      // Делает ( ... ) желтым как сейчас в дизайне
       const s = String(label || '').trim();
       const m = s.match(/^(.*)\((.*)\)(.*)$/);
       if (!m) return escapeHtml(s);
@@ -599,20 +598,14 @@
     }
 
     function applyUI(){
-      // HERO
       setText('hero-title', uiLabel('hero_title', byId('hero-title')?.textContent || ''));
       setText('hero-subtitle', uiLabel('hero_subtitle', byId('hero-subtitle')?.textContent || ''));
 
-      // Step titles
       setText('step1-title', uiLabel('step1_title', byId('step1-title')?.textContent || ''));
       setText('step2-title', uiLabel('step2_title', byId('step2-title')?.textContent || ''));
       setText('step4-title', uiLabel('step4_title', byId('step4-title')?.textContent || ''));
       setText('step5-title', uiLabel('step5_title', byId('step5-title')?.textContent || ''));
 
-      // Step label template
-      // (используется в showStep())
-
-      // Step1 labels
       setText('lbl-brand', stripStar(uiLabel('brand', 'Marca')));
       setText('lbl-model', stripStar(uiLabel('model', 'Modelo')));
       setText('lbl-year',  stripStar(uiLabel('year', 'Año')));
@@ -620,7 +613,6 @@
       setStar('star-model', uiRequired('model', true));
       setStar('star-year',  uiRequired('year', true));
 
-      // Step2 flow cards
       setText('flow-total-title', uiLabel('flow_total', 'Protección Total'));
       setText('flow-custom-title', uiLabel('flow_custom', 'Personalizar'));
       setText('flow-otros-title', uiLabel('flow_otros', 'Otros servicios'));
@@ -629,49 +621,39 @@
       setText('flow-custom-desc', (uiMeta('flow_custom_desc').text || ''));
       setText('flow-otros-desc', (uiMeta('flow_otros_desc').text || ''));
 
-      // Step2 buttons
       setText('back-2', uiLabel('btn_back_2', byId('back-2')?.textContent || 'Atrás'));
       setText('next-2', uiLabel('btn_next_2', byId('next-2')?.textContent || 'Continuar'));
 
-      // Step3 titles (будут переключаться enterStep3())
-      // Step3 buttons
       setText('back-3', uiLabel('btn_back_3', byId('back-3')?.textContent || 'Atrás'));
       setText('next-3', uiLabel('btn_next_3', byId('next-3')?.textContent || 'Continuar'));
       setText('back-3b', uiLabel('btn_back_3b', byId('back-3b')?.textContent || 'Atrás'));
       setText('next-3b', uiLabel('btn_next_3b', byId('next-3b')?.textContent || 'Continuar'));
 
-      // Packages block
       setText('packages-title', uiLabel('packages_title', byId('packages-title')?.textContent || 'Elige un paquete'));
       const def = uiMeta('packages_title').default_text || byId('packages-desc')?.textContent || '';
       setText('packages-desc', def);
 
-      // Finish titles
       setText('finish-title-pack', uiLabel('finish', byId('finish-title-pack')?.textContent || 'Tipo de cobertura'));
       setText('finish-title-parts', uiLabel('finish', byId('finish-title-parts')?.textContent || 'Tipo de cobertura'));
 
-      // Parts block title/subtitle
       const partsLabel = uiLabel('parts_block_title', 'Selección de partes (Carrocería)');
       setHTML('ui-title', emphasizeParen(partsLabel));
       const partsSub = uiMeta('parts_block_title').subtitle || '';
       setText('ui-subtitle', partsSub);
 
-      // Parts tabs
       setText('tab-frontal', uiLabel('tab_frontal', byId('tab-frontal')?.textContent || 'Frontal'));
       setText('tab-lateral', uiLabel('tab_lateral', byId('tab-lateral')?.textContent || 'Lateral'));
       setText('tab-trasera', uiLabel('tab_trasera', byId('tab-trasera')?.textContent || 'Trasera'));
 
-      // Sheet texts
       setText('sheet-title', uiLabel('sheet_title', byId('sheet-title')?.textContent || 'Tu selección'));
       setText('btn-close', uiLabel('sheet_btn_close', byId('btn-close')?.textContent || 'Cerrar'));
 
-      // Step4
       setText('tab-step4-extras', uiLabel('extras', byId('tab-step4-extras')?.textContent || 'Extras'));
       setText('tab-step4-servicios', uiLabel('servicios', byId('tab-step4-servicios')?.textContent || 'Servicios'));
       setText('back-4', uiLabel('btn_back_4', byId('back-4')?.textContent || 'Atrás'));
       setText('next-4', uiLabel('btn_next_4', byId('next-4')?.textContent || 'Continuar'));
       setText('step4-count', uiLabel('step4_none_selected', byId('step4-count')?.textContent || 'Ninguno seleccionado'));
 
-      // Step5 labels required stars
       setText('lbl-name', stripStar(uiLabel('name_client', 'Nombre')));
       setText('lbl-phone', stripStar(uiLabel('phone', 'Teléfono')));
       setText('lbl-email', stripStar(uiLabel('email_client', 'Email')));
@@ -681,16 +663,13 @@
 
       setText('lbl-comment', uiLabel('comment', byId('lbl-comment')?.textContent || 'Comentario (opcional)'));
 
-      // Center enable/label
       const centerEnabled = uiEnabled('center', true);
       byId('wrap-center')?.classList.toggle('hidden', !centerEnabled);
       setText('lbl-center', uiLabel('center', byId('lbl-center')?.textContent || 'Centro de instalación (opcional)'));
 
-      // Promo / send question
       setText('promo-text', uiLabel('promo', byId('promo-text')?.textContent || ''));
       setText('send-question', uiLabel('send_channel_question', byId('send-question')?.textContent || ''));
 
-      // Send channel tab labels (оставляем эмодзи в дизайне)
       const waLabel = uiLabel('cta_whatsapp', 'WhatsApp');
       const emLabel = uiLabel('cta_email', 'Email');
 
@@ -700,18 +679,15 @@
       setText('send-tab-wa', `📱 ${waCore}`);
       setText('send-tab-email', `📧 ${emCore}`);
 
-      // Back + submit
       setText('back-5', uiLabel('btn_back_5', byId('back-5')?.textContent || 'Atrás'));
       setText('submit-text', uiLabel('btn_submit', byId('submit-text')?.textContent || 'Enviar presupuesto'));
 
-      // Privacy text (из meta)
       const p = uiMeta('privacy_text');
       if (p && (p.text || p.url || p.link_text)){
         const url = p.url || PRIVACY_URL;
         const linkText = p.link_text || 'Política de privacidad';
         const fullText = p.text || '';
 
-        // собираем HTML, сохраняя жирным "He leído y acepto" если есть
         const idx = fullText.indexOf(linkText);
         const before = idx >= 0 ? fullText.slice(0, idx) : fullText;
         const after = idx >= 0 ? fullText.slice(idx + linkText.length) : '';
@@ -735,7 +711,7 @@
 
     async function loadUIFields(){
       try{
-        const { data } = await supabase
+        const { data } = await sb
           .from('ui_form_fields')
           .select('field_key,step,label,enabled,required,sort_order,meta')
           .eq('form_key', FORM_KEY)
@@ -751,11 +727,10 @@
         applyUI();
       } catch(e){
         console.warn('ui_form_fields load failed:', e);
-        // не ломаем форму, просто остаются дефолтные тексты
       }
     }
 
-    // App data (no window.__globals)
+    // App data
     const appData = {
       centers: new Map(),
       finishes: new Map(),
@@ -796,124 +771,6 @@
       lastSubmitAt: 0
     };
 
-    // ----------------- Progress save (no PII) -----------------
-    const PROGRESS_KEY = 'ppf_form_progress_v1';
-
-    function saveProgress(){
-      const payload = {
-        step: state.step,
-        flow: state.flow,
-        brand: state.brand,
-        model: state.model,
-        year: state.year,
-        finish_key: state.finish_key,
-        selectedPackage: state.selectedPackage,
-        selectedParts: [...state.selectedParts],
-        selectedExtras: [...state.selectedExtras],
-        selectedServicios: [...state.selectedServicios],
-        send_channel: state.send_channel,
-        timestamp: Date.now()
-      };
-      try {
-        localStorage.setItem(PROGRESS_KEY, JSON.stringify(payload));
-      } catch(e){
-        console.warn('Could not save progress:', e);
-      }
-    }
-
-    function clearProgress(){
-      try { localStorage.removeItem(PROGRESS_KEY); } catch(e){}
-    }
-
-    function restoreProgressIfAny(){
-      try{
-        const raw = localStorage.getItem(PROGRESS_KEY);
-        if (!raw) return false;
-        const saved = JSON.parse(raw);
-        if (!saved?.timestamp) return false;
-        const fresh = (Date.now() - saved.timestamp) < 30 * 60 * 1000;
-        if (!fresh) { clearProgress(); return false; }
-
-        const ok = confirm('¿Continuar donde lo dejaste?');
-        if (!ok) { clearProgress(); return false; }
-
-        state.flow = saved.flow || '';
-        state.brand = saved.brand || '';
-        state.model = saved.model || '';
-        state.year = saved.year || '';
-        state.finish_key = saved.finish_key || '';
-        state.selectedPackage = saved.selectedPackage || '';
-        state.selectedParts = new Set(saved.selectedParts || []);
-        state.selectedExtras = new Set(saved.selectedExtras || []);
-        state.selectedServicios = new Set(saved.selectedServicios || []);
-        state.send_channel = saved.send_channel === 'whatsapp' ? 'whatsapp' : 'email';
-        state.step = Number(saved.step || 1);
-
-        trackEvent('form_progress_restored', { step: state.step });
-        return true;
-      } catch(e){
-        clearProgress();
-        return false;
-      }
-    }
-
-    // ----------------- Submit fallback queue (LocalStorage) -----------------
-    const PENDING_KEY = 'ppf_pending_leads_v1';
-
-    function readPending(){
-      try{
-        const arr = JSON.parse(localStorage.getItem(PENDING_KEY) || '[]');
-        const now = Date.now();
-        return (Array.isArray(arr) ? arr : [])
-          .filter(x => x && x.timestamp && (now - x.timestamp) < 24*60*60*1000)
-          .slice(0, 10);
-      } catch(e){
-        return [];
-      }
-    }
-
-    function writePending(list){
-      try {
-        localStorage.setItem(PENDING_KEY, JSON.stringify((list || []).slice(0,10)));
-      } catch(e){
-        console.warn('Could not write pending:', e);
-      }
-    }
-
-    function enqueuePending(payload){
-      const list = readPending();
-      list.unshift({ payload, timestamp: Date.now() });
-      writePending(list);
-      console.log('💾 Solicitud guardada localmente. Se reenviará automáticamente.');
-    }
-
-    async function flushPending(){
-      const list = readPending();
-      if (!list.length) return;
-
-      console.log(`🔄 Reintentando enviar ${list.length} solicitudes pendientes...`);
-
-      const keep = [];
-      let sentCount = 0;
-
-      for (const item of list){
-        try{
-          await postToWebhook(item.payload, { silent: true });
-          sentCount++;
-          console.log('✅ Solicitud pendiente enviada');
-        } catch(e){
-          keep.push(item);
-        }
-      }
-
-      if (sentCount > 0){
-        console.log(`✅ ${sentCount} solicitudes enviadas con éxito`);
-        trackEvent('pending_leads_flushed', { count: sentCount });
-      }
-
-      writePending(keep);
-    }
-
     // ----------------- STEP CONTROL -----------------
     function stepLabelText(step){
       const tpl = uiLabel('step_label_template', 'Paso {step} de 5');
@@ -941,8 +798,6 @@
         }, 100);
       }
 
-      saveProgress();
-
       trackEvent('form_step_viewed', {
         step: n,
         flow: state.flow,
@@ -952,7 +807,6 @@
 
     // ----------------- LOAD: Brands/Models/Years -----------------
     function placeholderText(key, fallback){
-      // В таблице у тебя есть brand_placeholder/model_placeholder/year_placeholder
       const t = uiLabel(key, '');
       return (t && t.trim()) ? t.trim() : fallback;
     }
@@ -962,7 +816,7 @@
       el.disabled = true;
       el.innerHTML = '<option value="">Cargando marcas...</option>';
       try{
-        const { data } = await supabase.from('car_marcas')
+        const { data } = await sb.from('car_marcas')
           .select('marca')
           .order('marca', { ascending:true })
           .throwOnError();
@@ -995,7 +849,7 @@
       el.innerHTML = '<option value="">Cargando modelos...</option>';
 
       try{
-        const { data } = await supabase.from('car_marcas')
+        const { data } = await sb.from('car_marcas')
           .select('modelo')
           .eq('marca', brand)
           .order('modelo', { ascending:true })
@@ -1020,7 +874,7 @@
       el.disabled = true;
       el.innerHTML = '<option value="">Cargando años...</option>';
       try{
-        const { data } = await supabase.from('año_coefficients')
+        const { data } = await sb.from('año_coefficients')
           .select('año')
           .order('año', { ascending:false })
           .throwOnError();
@@ -1045,7 +899,7 @@
       el.disabled = true;
       el.innerHTML = '<option value="">Cargando centros...</option>';
       try{
-        const { data } = await supabase.from('install_centers')
+        const { data } = await sb.from('install_centers')
           .select('id,title,enabled,sort_order')
           .eq('enabled', true)
           .order('sort_order', { ascending:true })
@@ -1073,7 +927,7 @@
       finishSelParts.innerHTML = '<option value="">Cargando opciones...</option>';
 
       try{
-        const { data } = await supabase.from('film_finishes')
+        const { data } = await sb.from('film_finishes')
           .select('finish_key,title,enabled,sort_order,allow_partial,warning_partial')
           .eq('enabled', true)
           .order('sort_order', { ascending:true })
@@ -1099,7 +953,7 @@
     // ----------------- LOAD: price_ui + price (join) -----------------
     async function loadPriceUI(){
       try{
-        const { data } = await supabase.from('price_ui')
+        const { data } = await sb.from('price_ui')
           .select('price_id, enabled, sort_order, ui_step, ui_block, ui_group, ui_tab, price:price_id(service_name,type)')
           .eq('enabled', true)
           .order('sort_order', { ascending:true })
@@ -1146,12 +1000,10 @@
     }
 
     function packageInfoText(){
-      // default_text из packages_title.meta + словарь из packages_text_by_package.meta
       const def = uiMeta('packages_title').default_text || byId('packages-desc')?.textContent || '';
       const dict = uiMeta('packages_text_by_package') || {};
       const key = norm(state.selectedPackage);
       if (key && dict && typeof dict === 'object'){
-        // ищем по ключам basico/avanzado/maximo
         if (dict[key]) return String(dict[key]);
       }
       return String(def || '');
@@ -1190,11 +1042,9 @@
         updatePackagesInfoUI();
         updatePartialWarningUI();
         updateStep3Buttons();
-        saveProgress();
         renderPackages(list);
       };
 
-      // обновляем подпись сразу
       updatePackagesInfoUI();
     }
 
@@ -1215,7 +1065,6 @@
       const miss = step1MissingFields();
       byId('next-1').disabled = miss.length > 0;
       byId('step1-hint').textContent = miss.length ? ('Falta completar: ' + miss.join(', ') + '.') : '';
-      saveProgress();
     }
 
     // ----------------- FLOW STEP 2 (with reset confirm) -----------------
@@ -1263,7 +1112,6 @@
 
       byId('next-2').disabled = !flow;
       byId('step2-hint').textContent = flow ? '' : 'Selecciona una opción.';
-      saveProgress();
 
       trackEvent('flow_selected', { flow });
     }
@@ -1356,7 +1204,6 @@
       byId('next-3b').disabled = !(state.flow === 'custom' && canParts);
 
       updateViewButtonCount();
-      saveProgress();
     }
 
     // ----------------- PARTS -----------------
@@ -1515,7 +1362,6 @@
       }).join('');
 
       updateStep4Count();
-      saveProgress();
     }
 
     function updateStep4Count(){
@@ -1548,7 +1394,6 @@
       byId('send-tab-wa').setAttribute('aria-selected', state.send_channel === 'whatsapp' ? 'true' : 'false');
       byId('send-tab-email').classList.toggle('active', state.send_channel === 'email');
       byId('send-tab-email').setAttribute('aria-selected', state.send_channel === 'email' ? 'true' : 'false');
-      saveProgress();
     }
 
     // ----------------- Inline validation -----------------
@@ -1573,6 +1418,11 @@
       if (!el) return;
       el.classList.toggle('invalid', !ok);
       el.classList.toggle('valid', ok);
+    }
+
+    function clearFieldMark(el){
+      if (!el) return;
+      el.classList.remove('invalid','valid');
     }
 
     function setFieldHint(id, text){
@@ -1683,7 +1533,10 @@
         send_channel: state.send_channel,
 
         consent_at: consentAt,
-        consent_policy_url: PRIVACY_URL
+        consent_policy_url: PRIVACY_URL,
+
+        /* UPDATED: GDPR flag */
+        privacy_policy_accepted: !!byId('consent')?.checked
       };
     }
 
@@ -1717,80 +1570,80 @@
       }
     }
 
-    // =========================================================
-    // ✅ NEW: Reset whole form after successful submit
-    // =========================================================
-    function resetFormAfterSuccess(){
-      // Reset state
-      state.flow = '';
-      state.brand = '';
-      state.model = '';
-      state.year = '';
+    // ----------------- FULL RESET AFTER SUCCESS -----------------
+    async function resetFormAfterSuccess(){
+      setMsg('');
+      byId('step1-hint').textContent = '';
+      byId('step2-hint').textContent = '';
+      byId('step3-hint').textContent = '';
+      byId('step4-hint').textContent = '';
+      setFieldHint('name-hint','');
+      setFieldHint('phone-hint','');
+      setFieldHint('email-hint','');
+      setFieldHint('consent-hint','');
 
-      state.install_center_id = '';
-      state.install_center_title = '';
+      clearFieldMark(byId('name_client'));
+      clearFieldMark(byId('phone'));
+      clearFieldMark(byId('email_client'));
 
-      state.finish_key = '';
-      state.finish_title = '';
-      state.finish_allow_partial = true;
-      state.finish_warning_partial = '';
-
-      state.selectedPackage = '';
-      state.selectedParts.clear();
-      state.selectedExtras.clear();
-      state.selectedServicios.clear();
-
-      state.send_channel = 'email';
-      state.step4BackTarget = 3;
-      state.startedAt = Date.now();
-
-      // Reset UI fields
-      byId('brand').value = '';
-      byId('model').innerHTML = '<option value="">Selecciona una marca</option>';
-      byId('model').disabled = true;
-      byId('year').value = '';
-
-      byId('finish').value = '';
-      byId('finish_parts').value = '';
-
-      byId('install_center').value = '';
       byId('name_client').value = '';
       byId('phone').value = '';
       byId('email_client').value = '';
       byId('comment').value = '';
-
-      byId('consent').checked = false;
       byId('promo').checked = false;
+      byId('consent').checked = false;
 
-      // Reset validation visuals
-      ['name_client','phone','email_client'].forEach(id=>{
-        const el = byId(id);
-        el.classList.remove('invalid','valid');
-      });
-      ['name-hint','phone-hint','email-hint','consent-hint'].forEach(id=>{
-        const el = byId(id);
-        if (el){ el.classList.add('hidden'); el.textContent=''; }
-      });
+      state.flow = '';
+      state.brand = '';
+      state.model = '';
+      state.year = '';
+      state.install_center_id = '';
+      state.install_center_title = '';
+      state.finish_key = '';
+      state.finish_title = '';
+      state.finish_allow_partial = true;
+      state.finish_warning_partial = '';
+      state.selectedPackage = '';
+      state.selectedParts.clear();
+      state.selectedExtras.clear();
+      state.selectedServicios.clear();
+      state.send_channel = 'email';
+      state.step4BackTarget = 3;
+      state.startedAt = Date.now();
 
-      // Reset warnings + sheet
+      byId('brand').value = '';
+      await loadModels('');
+      byId('year').value = '';
+      byId('finish').value = '';
+      byId('finish_parts').value = '';
+      byId('install_center').value = '';
+
+      setFlow('');
+
+      byId('block-packages').classList.add('hidden');
+      byId('block-parts').classList.add('hidden');
+      byId('step3-nav').classList.remove('hidden');
       byId('pack-warning-box').classList.add('hidden');
       byId('parts-warning-box').classList.add('hidden');
       byId('pack-warning-body').textContent = '';
       byId('parts-warning-body').textContent = '';
-      closeSheet();
 
-      // Reset buttons/texts
-      setFlow('');              // clears flow UI & next-2
-      setSendChannel('email');  // Email by default (UI + state)
-      updateStep1UI();
+      updatePackagesInfoUI();
       updateStep3Buttons();
       renderStep4List('extras');
+      updateStep4Count();
+      updateViewButtonCount();
+      closeSheet();
 
-      // Return to step 1
+      setSendChannel('email');
+
+      byId('submit-text').textContent = uiLabel('btn_submit', 'Enviar presupuesto');
+
       showStep(1);
+      updateStep1UI();
     }
 
-    // ----------------- Submit protections + fallback queue -----------------
+    // ----------------- Submit protections -----------------
     async function submitForm(){
       setMsg('');
 
@@ -1817,52 +1670,50 @@
           throw new Error('Por favor completa todos los campos obligatorios correctamente.');
         }
 
+        /* UPDATED: GDPR hard check (без alert, с вашим hint) */
+        if (!byId('consent')?.checked){
+          validateConsent();
+          throw new Error('Debes aceptar la política de privacidad para continuar.');
+        }
+
         const miss = step1MissingFields();
         if (miss.length) throw new Error('Faltan datos del coche: ' + miss.join(', ') + '.');
 
+        /* UPDATED: GA4 generate_lead (строго без PII) */
+        trackEvent('generate_lead', {
+          car_brand: state.brand || byId('brand').value || '',
+          service_flow: state.flow || '',
+          finish_type: state.finish_key || ''
+        });
+
         const payload = collectPayload();
 
-        try{
-          await postToWebhook(payload);
+        await postToWebhook(payload);
+        setMsg('Enviado. Te contactaremos lo antes posible.', true);
 
-          setMsg('¡Enviado! Te contactaremos lo antes posible. 🎉', true);
+        trackEvent('form_submitted_success', {
+          flow: state.flow,
+          send_channel: state.send_channel,
+          time_to_complete: Math.round((Date.now() - state.startedAt) / 1000)
+        });
 
-          trackEvent('form_submitted_success', {
-            flow: state.flow,
-            send_channel: state.send_channel,
-            time_to_complete: Math.round((Date.now() - state.startedAt) / 1000)
-          });
-
-          if (window.fbq){
-            fbq('track', 'Lead', {
-              content_name: state.flow,
-              value: 1,
-              currency: 'EUR'
-            });
-          }
-
-          clearProgress();
-
-          // ✅ IMPORTANT: reset everything after success
-          resetFormAfterSuccess();
-
-        } catch(e){
-          enqueuePending(payload);
-          setMsg('No hemos podido enviar ahora. Guardamos tu solicitud y la reintentaremos automáticamente.', false);
-          console.error('submit -> queued:', e);
-
-          trackEvent('form_submit_failed_queued', {
-            flow: state.flow,
-            error: e.message
+        if (window.fbq){
+          fbq('track', 'Lead', {
+            content_name: state.flow,
+            value: 1,
+            currency: 'EUR'
           });
         }
+
+        await resetFormAfterSuccess();
+
       } catch(e){
         console.error('submit:', e);
         setMsg('Error: ' + (e?.message || e), false);
 
-        trackEvent('form_submit_validation_error', {
+        trackEvent('form_submit_error', {
           flow: state.flow,
-          error: e.message
+          error: e?.message || String(e)
         });
       } finally {
         btn.disabled = false;
@@ -1900,16 +1751,10 @@
 
     // ----------------- INIT -----------------
     async function init(){
-      trackEvent('form_page_view', {
-        referrer: document.referrer || 'direct'
-      });
-
-      flushPending().catch(()=>{});
-
-      const restored = restoreProgressIfAny();
+      trackEvent('form_page_view', { referrer: document.referrer || 'direct' });
 
       await Promise.all([
-        loadUIFields(),        // <-- ВАЖНО: form_ui больше не используется
+        loadUIFields(),
         loadBrands(),
         loadModels(''),
         loadYears(),
@@ -1919,28 +1764,7 @@
 
       await loadPriceUI();
 
-      // после загрузки ui_form_fields можно еще раз применить (на случай позднего ответа)
-      // (без побочных эффектов)
       if (ui.ready) applyUI();
-
-      if (restored){
-        if (state.brand){
-          byId('brand').value = state.brand;
-          await loadModels(state.brand);
-        }
-        if (state.model) byId('model').value = state.model;
-        if (state.year) byId('year').value = state.year;
-
-        if (state.finish_key){
-          byId('finish').value = state.finish_key;
-          byId('finish_parts').value = state.finish_key;
-          setFinishFromKey(state.finish_key);
-        }
-
-        updatePackagesInfoUI();
-        updatePartialWarningUI();
-        updateStep3Buttons();
-      }
 
       // Step1 listeners
       byId('brand').addEventListener('change', async (e)=>{
@@ -1958,7 +1782,6 @@
         state.install_center_id = e.target.value || '';
         const r = appData.centers.get(String(state.install_center_id));
         state.install_center_title = r?.title || '';
-        saveProgress();
       });
 
       updateStep1UI();
@@ -2067,7 +1890,7 @@
         if (!byId('name-hint').classList.contains('hidden')) validateName();
       });
 
-      byId('phone').addEventListener('input', (e)=> {
+      byId('phone').addEventListener('input', (e)=>{
         e.target.value = formatPhoneES(e.target.value);
         if (!byId('phone-hint').classList.contains('hidden')) validatePhone();
       });
@@ -2080,23 +1903,14 @@
 
       initKeyboardNav();
 
-      if (restored){
-        if (state.step === 3) enterStep3();
-        if (state.step === 4 && state.flow === 'otros') state.step4BackTarget = 2;
-        showStep(state.step || 1);
-        updatePackagesInfoUI();
-        updatePartialWarningUI();
-        updateStep3Buttons();
-      } else {
-        showStep(1);
-        setFlow('');
-        setFinishFromKey('');
-        updatePackagesInfoUI();
-        updatePartialWarningUI();
-        updateStep3Buttons();
-      }
+      // Initial screen
+      showStep(1);
+      setFlow('');
+      setFinishFromKey('');
+      updatePackagesInfoUI();
+      updatePartialWarningUI();
+      updateStep3Buttons();
 
-      // Step1 button label from UI
       setText('next-1', uiLabel('btn_next_1', byId('next-1')?.textContent || 'Continuar'));
     }
 
