@@ -10,6 +10,10 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
 
+  <!-- intl-tel-input -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@23.8.0/build/css/intlTelInput.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@23.8.0/build/js/intlTelInput.min.js"></script>
+
   <!-- Google Analytics 4 (replace with your ID) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
   <script>
@@ -36,18 +40,21 @@
   <style>
     body { background:#121212; color:#fff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
 
-    /* UPDATED: layout / “пустой экран” — частично (только min-height) */
+    /* UPDATED: layout */
     .card { background:#1c1c1c; border:1px solid #2a2a2a; min-height: 520px; display:flex; flex-direction:column; }
 
     .accent { color:#f5bf00; }
     label.small { font-size:.95rem; color:#cfcfcf; }
+
     .field, select, input[type="text"], input[type="number"], input[type="email"], input[type="tel"], textarea {
       background:#111; color:#eee; border:1px solid #2a2a2a; border-radius:.75rem; padding:.65rem .8rem;
       outline: none; transition: border-color .15s, box-shadow .15s;
     }
     .field:focus { border-color: #f5bf00; box-shadow: 0 0 0 2px rgba(245,191,0,.15); }
     .field:disabled { opacity:.6; cursor: not-allowed; }
+
     .section-title { color:#eaeaea; font-weight:800; margin-top:.25rem; }
+
     .btn-yellow {
       background:#f5bf00; color:#111; font-weight:800; border-radius:9999px; padding:.8rem 2.2rem;
       transition: transform .1s, box-shadow .15s; cursor: pointer; border: none;
@@ -55,15 +62,18 @@
     .btn-yellow:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(245,191,0,.3); }
     .btn-yellow:active:not(:disabled) { transform: translateY(0); }
     .btn-yellow:disabled { opacity:.45; cursor:not-allowed; }
+
     .btn-ghost {
       border:1px solid #3a3a3a; color:#eaeaea; border-radius:9999px; padding:.75rem 1.5rem;
       background: transparent; transition: background .15s, border-color .15s; cursor: pointer;
     }
     .btn-ghost:hover:not(:disabled) { background:#1a1a1a; border-color:#4a4a4a; }
     .btn-ghost:disabled { opacity:.45; cursor: not-allowed; }
+
     .hint { color:#cfcfcf; }
     .error { color:#ff6a3d; }
     .ok { color:#7CFC9A; }
+
     .step-dot { width:10px; height:10px; border-radius:9999px; background:#3a3a3a; transition: background .2s; }
     .step-dot.active { background:#f5bf00; }
 
@@ -76,6 +86,7 @@
     .radio-card:hover { background:#1a1a1a; border-color:#3a3a3a; }
     .radio-card:focus { outline: 2px solid #f5bf00; outline-offset: 2px; }
     .radio-card.active { border-color:#f5bf00; background:#1a1603; }
+
     .choice-grid { display:grid; grid-template-columns:1fr; gap:.75rem; }
     @media (min-width: 768px){ .choice-grid { grid-template-columns:1fr 1fr 1fr; } }
 
@@ -90,6 +101,7 @@
     }
     .row:hover { background:#1a1a1a; border-color:#3a3a3a; }
     .row.selected { border-color:#f5bf00; background:#161203; }
+
     .check {
       width:18px; height:18px; border-radius:4px;
       border:1px solid #3a3a3a; background:#0f0f0f; display:grid; place-items:center;
@@ -99,16 +111,28 @@
     .row.selected .check svg { display:block; }
     .check svg { display:none; }
 
+    /* Bottom Sheet (UPDATED: transform-based + safe-area + body lock) */
     .sheet-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:60; display:none; }
-    .sheet {
-      position:fixed; left:0; right:0; bottom:-100%;
-      background:#161616; border-top-left-radius:18px; border-top-right-radius:18px;
-      border:1px solid #2a2a2a; border-bottom:0;
-      z-index:70; transition:bottom .22s ease;
-      max-height:75vh; overflow:auto;
-    }
-    .sheet.open { bottom:0; }
     .sheet-backdrop.open { display:block; }
+
+    .sheet {
+      position:fixed;
+      left:0; right:0; bottom:0;
+      transform: translateY(110%);
+      background:#161616;
+      border-top-left-radius:18px; border-top-right-radius:18px;
+      border:1px solid #2a2a2a; border-bottom:0;
+      z-index:70;
+      transition: transform .22s ease;
+      height: min(75vh, 560px);
+      overflow:auto;
+      padding-bottom: env(safe-area-inset-bottom);
+      -webkit-overflow-scrolling: touch;
+    }
+    .sheet.open { transform: translateY(0); }
+
+    body.noscroll { overflow:hidden; touch-action:none; }
+
     .grab { width:46px; height:5px; border-radius:9999px; background:#3a3a3a; margin:10px auto; }
 
     .warnbox {
@@ -149,11 +173,17 @@
       animation: spin 0.6s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* intl-tel-input: make input match your UI */
+    .iti { width: 100%; }
+    .iti__country-list { background:#111; color:#eee; border:1px solid #2a2a2a; }
+    .iti__country.iti__highlight { background:#1a1a1a; }
+    .iti__divider { border-color:#2a2a2a; }
   </style>
 </head>
 
 <body>
-  <div class="max-w-3xl mx-auto px-5 py-8">
+  <div id="form-top" class="max-w-3xl mx-auto px-5 py-8">
     <h1 id="hero-title" class="text-2xl md:text-3xl font-extrabold text-center accent tracking-wide">
       PRESUPUESTO ONLINE EN MENOS DE 2 MINUTOS
     </h1>
@@ -340,11 +370,13 @@
 
         <div class="mt-3 space-y-2" id="step4-list"></div>
 
-        <div class="flex items-center justify-between gap-3 pt-2">
+        <!-- UPDATED: mobile layout so buttons never fall off-screen -->
+        <div class="pt-2 space-y-3 md:space-y-0 md:flex md:items-center md:justify-between md:gap-3">
           <div class="text-sm text-slate-300" id="step4-count">Ninguno seleccionado</div>
-          <div class="flex gap-2">
-            <button class="btn-ghost" id="back-4" type="button">Atrás</button>
-            <button class="btn-yellow" id="next-4" type="button">Continuar</button>
+
+          <div class="grid grid-cols-2 gap-2 md:flex md:gap-2 md:justify-end">
+            <button class="btn-ghost w-full md:w-auto" id="back-4" type="button">Atrás</button>
+            <button class="btn-yellow w-full md:w-auto" id="next-4" type="button">Continuar</button>
           </div>
         </div>
 
@@ -367,7 +399,8 @@
             <label class="small block mb-1" for="phone">
               <span id="lbl-phone">Teléfono</span> <span id="star-phone" class="accent">*</span>
             </label>
-            <input id="phone" class="w-full field" type="tel" placeholder="600 00 00 00" required inputmode="tel" autocomplete="tel" />
+            <!-- UPDATED placeholder: international -->
+            <input id="phone" class="w-full field" type="tel" placeholder="+34 600 00 00 00" required inputmode="tel" autocomplete="tel" />
             <div id="phone-hint" class="text-xs error mt-1 hidden"></div>
           </div>
           <div class="md:col-span-2">
@@ -466,9 +499,7 @@
     const FORM_KEY = "quote_v2";
     // =================================
 
-    // IMPORTANT: client is sb
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
     const byId = (id) => document.getElementById(id);
 
     // Cache common DOM
@@ -476,6 +507,9 @@
     const stepLabelEl = byId('step-label');
     const steps = [1,2,3,4,5].map(i => byId(`step-${i}`));
     const dots = [1,2,3,4,5].map(i => byId(`dot-${i}`));
+
+    // intl-tel-input instance
+    let iti = null;
 
     // Helpers
     const norm = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
@@ -509,25 +543,18 @@
       setTimeout(() => el.remove(), 1000);
     }
 
-    // Analytics tracking helpers
     function trackEvent(eventName, params = {}){
       try {
         if (window.gtag){
           gtag('event', eventName, params);
         }
-        // if (window.fbq){
-        //   fbq('trackCustom', eventName, params);
-        // }
       } catch(e){
         console.warn('Analytics tracking failed:', e);
       }
     }
 
     // ---------- UI from ui_form_fields ----------
-    const ui = {
-      map: new Map(),  // field_key -> row
-      ready: false
-    };
+    const ui = { map: new Map(), ready: false };
 
     function parseMeta(m){
       if (!m) return {};
@@ -538,49 +565,38 @@
       return {};
     }
 
-    function uiRow(key){
-      return ui.map.get(String(key)) || null;
-    }
-
+    function uiRow(key){ return ui.map.get(String(key)) || null; }
     function uiLabel(key, fallback=''){
       const r = uiRow(key);
       const v = r?.label;
       return (v != null && String(v).trim() !== '') ? String(v) : fallback;
     }
-
     function uiMeta(key){
       const r = uiRow(key);
       return parseMeta(r?.meta);
     }
-
     function uiEnabled(key, fallback=true){
       const r = uiRow(key);
       if (!r) return fallback;
       return r.enabled !== false;
     }
-
     function uiRequired(key, fallback=false){
       const r = uiRow(key);
       if (!r) return fallback;
       return r.required === true;
     }
 
-    function stripStar(s){
-      return String(s||'').replace(/\*/g,'').trim();
-    }
-
+    function stripStar(s){ return String(s||'').replace(/\*/g,'').trim(); }
     function setStar(starId, required){
       const el = byId(starId);
       if (!el) return;
       el.style.display = required ? '' : 'none';
     }
-
     function setText(id, text){
       const el = byId(id);
       if (!el) return;
       el.textContent = String(text ?? '');
     }
-
     function setHTML(id, html){
       const el = byId(id);
       if (!el) return;
@@ -777,6 +793,12 @@
       return String(tpl).replace('{step}', String(step));
     }
 
+    function scrollToFormTop(){
+      const top = byId('form-top');
+      if (top) top.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      else window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
     function showStep(n){
       blurActive();
       state.prevStep = state.step;
@@ -787,7 +809,8 @@
 
       stepLabelEl.textContent = stepLabelText(n);
 
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      // UPDATED: scroll to form top anchor (instead of window top)
+      scrollToFormTop();
 
       const heading = byId(`step-${n}`)?.querySelector('.section-title');
       if (heading){
@@ -1049,9 +1072,7 @@
     }
 
     // ----------------- VALIDATION STEP 1 -----------------
-    function labelForMissing(key, fallback){
-      return stripStar(uiLabel(key, fallback));
-    }
+    function labelForMissing(key, fallback){ return stripStar(uiLabel(key, fallback)); }
 
     function step1MissingFields(){
       const miss = [];
@@ -1067,7 +1088,7 @@
       byId('step1-hint').textContent = miss.length ? ('Falta completar: ' + miss.join(', ') + '.') : '';
     }
 
-    // ----------------- FLOW STEP 2 (with reset confirm) -----------------
+    // ----------------- FLOW STEP 2 -----------------
     function hasSelections(){
       return !!state.selectedPackage ||
              state.selectedParts.size > 0 ||
@@ -1276,17 +1297,23 @@
       byId('btn-view').disabled = (n === 0);
     }
 
-    // ----------------- SHEET -----------------
+    // ----------------- SHEET (UPDATED) -----------------
     function openSheet(){
       byId('backdrop').classList.add('open');
       byId('sheet').classList.add('open');
       byId('backdrop').setAttribute('aria-hidden','false');
+      document.body.classList.add('noscroll');
+
+      // ensure title is visible
+      byId('sheet').scrollTop = 0;
+
       renderSheet();
     }
     function closeSheet(){
       byId('sheet').classList.remove('open');
       byId('backdrop').classList.remove('open');
       byId('backdrop').setAttribute('aria-hidden','true');
+      document.body.classList.remove('noscroll');
     }
 
     function renderSheet(){
@@ -1404,27 +1431,15 @@
       return re.test(s);
     }
 
-    function phoneValidES(v){
-      const raw = String(v||'').trim();
-      const digits = raw.replace(/[^\d]/g,'');
-      let d = digits;
-      if (d.startsWith('34') && d.length >= 11) d = d.slice(2);
-      if (d.length !== 9) return false;
-      const first = d.charAt(0);
-      return first === '6' || first === '7' || first === '9';
-    }
-
     function markField(el, ok){
       if (!el) return;
       el.classList.toggle('invalid', !ok);
       el.classList.toggle('valid', ok);
     }
-
     function clearFieldMark(el){
       if (!el) return;
       el.classList.remove('invalid','valid');
     }
-
     function setFieldHint(id, text){
       const el = byId(id);
       if (!el) return;
@@ -1446,13 +1461,36 @@
       return ok;
     }
 
+    // UPDATED: phone validation via intl-tel-input only
     function validatePhone(){
       const el = byId('phone');
-      const v = (el.value||'').trim();
-      const ok = phoneValidES(v);
+      const raw = (el.value||'').trim();
+
+      // Required: if empty => invalid
+      if (!raw){
+        markField(el, false);
+        setFieldHint('phone-hint', 'Introduce tu teléfono.');
+        return false;
+      }
+
+      if (!iti){
+        // fallback (should not happen normally)
+        markField(el, false);
+        setFieldHint('phone-hint', 'Teléfono inválido.');
+        return false;
+      }
+
+      const ok = iti.isValidNumber();
       markField(el, ok);
-      setFieldHint('phone-hint', ok ? '' : 'Teléfono inválido (España: 9 dígitos, empieza por 6/7/9).');
-      return ok;
+
+      if (!ok){
+        const msg = uiLabel('phone_invalid_message', 'Teléfono inválido. Revisa el prefijo y el número.');
+        setFieldHint('phone-hint', msg);
+        return false;
+      }
+
+      setFieldHint('phone-hint', '');
+      return true;
     }
 
     function validateEmail(){
@@ -1478,18 +1516,20 @@
       return validateName() && validatePhone() && validateEmail() && validateConsent();
     }
 
-    function formatPhoneES(raw){
-      let v = raw.replace(/[^\d]/g, '');
-      if (v.startsWith('34') && v.length > 9) v = v.slice(2);
-      let formatted = '';
-      if (v.length >= 1) formatted = v.slice(0,3);
-      if (v.length >= 4) formatted += ' ' + v.slice(3,5);
-      if (v.length >= 6) formatted += ' ' + v.slice(5,7);
-      if (v.length >= 8) formatted += ' ' + v.slice(7,9);
-      return formatted.slice(0,12);
+    // ----------------- Payload -----------------
+    function getPhoneE164(){
+      if (!iti) return '';
+      try { return iti.getNumber(); } catch(e){ return ''; }
     }
 
-    // ----------------- Payload -----------------
+    function getPhoneCountry(){
+      if (!iti) return '';
+      try {
+        const c = iti.getSelectedCountryData();
+        return (c && c.iso2) ? String(c.iso2) : '';
+      } catch(e){ return ''; }
+    }
+
     function collectPayload(){
       const cat = appData.partsCatalog;
       const allParts = [...cat.frontal, ...cat.lateral, ...cat.trasera];
@@ -1506,10 +1546,16 @@
 
       const consentAt = new Date().toISOString();
 
+      // UPDATED: save phone in E.164 + phone_country
+      const phoneE164 = getPhoneE164();
+      const phoneCountry = getPhoneCountry();
+
       return {
         name_client: (byId('name_client')?.value || '').trim(),
         email_client: (byId('email_client')?.value || '').trim(),
-        phone: (byId('phone')?.value || '').trim(),
+
+        phone: phoneE164,               // E.164 (+34600...)
+        phone_country: phoneCountry,    // iso2 (es, fr, de...)
 
         marca: state.brand || byId('brand').value || '',
         modelo: state.model || byId('model').value || '',
@@ -1535,12 +1581,11 @@
         consent_at: consentAt,
         consent_policy_url: PRIVACY_URL,
 
-        /* UPDATED: GDPR flag */
         privacy_policy_accepted: !!byId('consent')?.checked
       };
     }
 
-    // ----------------- Webhook POST (CORS + timeout) -----------------
+    // ----------------- Webhook POST -----------------
     async function postToWebhook(payload, { silent = false } = {}){
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
@@ -1587,11 +1632,18 @@
       clearFieldMark(byId('email_client'));
 
       byId('name_client').value = '';
-      byId('phone').value = '';
       byId('email_client').value = '';
       byId('comment').value = '';
       byId('promo').checked = false;
       byId('consent').checked = false;
+
+      // reset intl-tel-input phone field (keep default country)
+      if (iti){
+        byId('phone').value = '';
+        try { iti.setNumber(''); } catch(e){}
+      } else {
+        byId('phone').value = '';
+      }
 
       state.flow = '';
       state.brand = '';
@@ -1670,16 +1722,21 @@
           throw new Error('Por favor completa todos los campos obligatorios correctamente.');
         }
 
-        /* UPDATED: GDPR hard check (без alert, с вашим hint) */
         if (!byId('consent')?.checked){
           validateConsent();
           throw new Error('Debes aceptar la política de privacidad para continuar.');
         }
 
+        // Strong guarantee: phone payload must be E.164 and valid
+        const phoneE164 = getPhoneE164();
+        if (!phoneE164 || !iti || !iti.isValidNumber()){
+          validatePhone();
+          throw new Error('Teléfono inválido. Revisa el prefijo y el número.');
+        }
+
         const miss = step1MissingFields();
         if (miss.length) throw new Error('Faltan datos del coche: ' + miss.join(', ') + '.');
 
-        /* UPDATED: GA4 generate_lead (строго без PII) */
         trackEvent('generate_lead', {
           car_brand: state.brand || byId('brand').value || '',
           service_flow: state.flow || '',
@@ -1749,9 +1806,43 @@
       });
     }
 
+    // ----------------- INIT intl-tel-input -----------------
+    function initIntlTelInput(){
+      const phoneInput = byId('phone');
+      if (!phoneInput || !window.intlTelInput) return;
+
+      iti = window.intlTelInput(phoneInput, {
+        // Spain as default, but allow any country
+        initialCountry: "es",
+        // enable geoip? (not needed now)
+        separateDialCode: false,
+        nationalMode: false, // keep international-friendly behavior
+        autoPlaceholder: "polite",
+        formatOnDisplay: true,
+        // utils.js enables isValidNumber and formatting
+        utilsScript: "https://cdn.jsdelivr.net/npm/intl-tel-input@23.8.0/build/js/utils.js"
+      });
+
+      // Validate on blur
+      phoneInput.addEventListener('blur', validatePhone);
+
+      // Re-validate on input if hint is shown
+      phoneInput.addEventListener('input', () => {
+        if (!byId('phone-hint').classList.contains('hidden')) validatePhone();
+      });
+
+      // Country change also affects validity
+      phoneInput.addEventListener('countrychange', () => {
+        if (!byId('phone-hint').classList.contains('hidden')) validatePhone();
+      });
+    }
+
     // ----------------- INIT -----------------
     async function init(){
       trackEvent('form_page_view', { referrer: document.referrer || 'direct' });
+
+      // init phone widget early
+      initIntlTelInput();
 
       await Promise.all([
         loadUIFields(),
@@ -1882,17 +1973,11 @@
 
       // Inline validation listeners
       byId('name_client').addEventListener('blur', validateName);
-      byId('phone').addEventListener('blur', validatePhone);
       byId('email_client').addEventListener('blur', validateEmail);
       byId('consent').addEventListener('change', validateConsent);
 
       byId('name_client').addEventListener('input', ()=> {
         if (!byId('name-hint').classList.contains('hidden')) validateName();
-      });
-
-      byId('phone').addEventListener('input', (e)=>{
-        e.target.value = formatPhoneES(e.target.value);
-        if (!byId('phone-hint').classList.contains('hidden')) validatePhone();
       });
 
       byId('email_client').addEventListener('input', ()=> {
