@@ -3,364 +3,2104 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Solicitar Presupuesto</title>
+  <title>Presupuesto Online - PPF Barcelona</title>
+  <meta name="description" content="Calcula tu presupuesto de protección PPF en menos de 2 minutos. Sin compromiso." />
+
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- оставил как было, но теперь не используем (form_ui исключили) -->
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+
+  <!-- Google Analytics 4 (replace with your ID) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-XXXXXXXXXX'); // Replace with your GA4 ID
+  </script>
+
+  <!-- Facebook Pixel (replace with your ID) -->
+  <script>
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+    n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];
+    s.parentNode.insertBefore(t,s)}(window, document,'script',
+    'https://connect.facebook.net/en_US/fbevents.js');
+    // fbq('init', 'YOUR_PIXEL_ID'); // Uncomment and replace
+    // fbq('track', 'PageView');
+  </script>
+
   <style>
-    body { background:#121212; color:#fff; }
-    .card { background:#1c1c1c; }
+    body { background:#121212; color:#fff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    .card { background:#1c1c1c; border:1px solid #2a2a2a; }
     .accent { color:#f5bf00; }
-    .divider { height:3px; width:260px; background:#f5bf00; margin:16px auto 0; }
     label.small { font-size:.95rem; color:#cfcfcf; }
-    .field, select, input[type="text"], input[type="number"], input[type="email"], input[type="tel"] {
-      background:#111; color:#eee; border:1px solid #2a2a2a; border-radius:.35rem; padding:.55rem .7rem;
+    .field, select, input[type="text"], input[type="number"], input[type="email"], input[type="tel"], textarea {
+      background:#111; color:#eee; border:1px solid #2a2a2a; border-radius:.75rem; padding:.65rem .8rem;
+      outline: none; transition: border-color .15s, box-shadow .15s;
     }
-    .field:disabled { opacity:.6; }
-    .section-title { color:#eaeaea; font-weight:700; margin-top:.75rem; }
-    .hint { color:#ff6a3d; text-align:center; }
-    .btn-yellow { background:#f5bf00; color:#111; font-weight:700; border-radius:9999px; padding:.7rem 2.5rem; }
-    .btn-yellow:disabled { opacity:.6; }
-    .checkbox-row { display:flex; align-items:center; gap:.55rem; margin:.25rem 0; }
-    .checkbox-row input { width:18px; height:18px; accent-color:#f5bf00; }
-    .col-title { font-weight:700; color:#eaeaea; margin-bottom:.5rem; }
+    .field:focus { border-color: #f5bf00; box-shadow: 0 0 0 2px rgba(245,191,0,.15); }
+    .field:disabled { opacity:.6; cursor: not-allowed; }
+    .section-title { color:#eaeaea; font-weight:800; margin-top:.25rem; }
+    .btn-yellow {
+      background:#f5bf00; color:#111; font-weight:800; border-radius:9999px; padding:.8rem 2.2rem;
+      transition: transform .1s, box-shadow .15s; cursor: pointer; border: none;
+    }
+    .btn-yellow:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(245,191,0,.3); }
+    .btn-yellow:active:not(:disabled) { transform: translateY(0); }
+    .btn-yellow:disabled { opacity:.45; cursor:not-allowed; }
+    .btn-ghost {
+      border:1px solid #3a3a3a; color:#eaeaea; border-radius:9999px; padding:.75rem 1.5rem;
+      background: transparent; transition: background .15s, border-color .15s; cursor: pointer;
+    }
+    .btn-ghost:hover:not(:disabled) { background:#1a1a1a; border-color:#4a4a4a; }
+    .btn-ghost:disabled { opacity:.45; cursor:not-allowed; }
+    .hint { color:#cfcfcf; }
+    .error { color:#ff6a3d; }
+    .ok { color:#7CFC9A; }
+    .step-dot { width:10px; height:10px; border-radius:9999px; background:#3a3a3a; transition: background .2s; }
+    .step-dot.active { background:#f5bf00; }
+
+    .radio-card {
+      border:1px solid #2a2a2a; background:#141414;
+      border-radius:1rem; padding:1rem;
+      display:flex; gap:.75rem; align-items:flex-start;
+      cursor:pointer; transition: all .15s;
+    }
+    .radio-card:hover { background:#1a1a1a; border-color:#3a3a3a; }
+    .radio-card:focus { outline: 2px solid #f5bf00; outline-offset: 2px; }
+    .radio-card.active { border-color:#f5bf00; background:#1a1603; }
+    .choice-grid { display:grid; grid-template-columns:1fr; gap:.75rem; }
+    @media (min-width: 768px){ .choice-grid { grid-template-columns:1fr 1fr 1fr; } }
+
+    .seg { border:1px solid #2a2a2a; background:#151515; }
+    .seg button { color:#b9b9b9; transition: all .15s; }
+    .seg button:hover { color:#eaeaea; }
+    .seg button.active { color:#111; background:#f5bf00; }
+
+    .row {
+      border:1px solid #2a2a2a; background:#131313;
+      transition: all .15s; cursor: pointer;
+    }
+    .row:hover { background:#1a1a1a; border-color:#3a3a3a; }
+    .row.selected { border-color:#f5bf00; background:#161203; }
+    .check {
+      width:18px; height:18px; border-radius:4px;
+      border:1px solid #3a3a3a; background:#0f0f0f; display:grid; place-items:center;
+      flex: 0 0 auto; transition: all .15s;
+    }
+    .row.selected .check { border-color:#f5bf00; background:#f5bf00; }
+    .row.selected .check svg { display:block; }
+    .check svg { display:none; }
+
+    .sheet-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:60; display:none; }
+    .sheet {
+      position:fixed; left:0; right:0; bottom:-100%;
+      background:#161616; border-top-left-radius:18px; border-top-right-radius:18px;
+      border:1px solid #2a2a2a; border-bottom:0;
+      z-index:70; transition:bottom .22s ease;
+      max-height:75vh; overflow:auto;
+    }
+    .sheet.open { bottom:0; }
+    .sheet-backdrop.open { display:block; }
+    .grab { width:46px; height:5px; border-radius:9999px; background:#3a3a3a; margin:10px auto; }
+
+    .warnbox {
+      border:1px solid rgba(245,191,0,.45);
+      background: rgba(245,191,0,.08);
+      border-radius: .9rem;
+      padding: .9rem;
+      color:#eaeaea;
+    }
+    .warnbox .title { font-weight:800; margin-bottom: .5rem; }
+
+    .field.invalid { border-color: #ff6a3d !important; box-shadow: 0 0 0 2px rgba(255,106,61,.15); }
+    .field.valid { border-color: rgba(124,252,154,.55) !important; box-shadow: 0 0 0 2px rgba(124,252,154,.10); }
+
+    .tiny { font-size: .85rem; color:#b9b9b9; line-height: 1.5; }
+    .tiny a { text-decoration: underline; color:#f5bf00; }
+    .tiny a:hover { color:#ffd740; }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0,0,0,0);
+      white-space: nowrap;
+      border-width: 0;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #3a3a3a;
+      border-top-color: #f5bf00;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
   </style>
 </head>
+
 <body>
-  <div class="max-w-3xl mx-auto px-6 py-10">
-    <h1 class="text-3xl font-extrabold text-center accent tracking-wide">SOLICITAR PRESUPUESTO</h1>
+  <div class="max-w-3xl mx-auto px-5 py-8">
+    <h1 id="hero-title" class="text-2xl md:text-3xl font-extrabold text-center accent tracking-wide">
+      PRESUPUESTO ONLINE EN MENOS DE 2 MINUTOS
+    </h1>
+    <p id="hero-subtitle" class="text-center mt-2 hint">
+      Precio orientativo sin compromiso. Te lo enviamos por WhatsApp o Email.
+    </p>
 
-    <div class="card rounded-2xl p-6 mt-8 space-y-6">
+    <div class="card rounded-2xl p-5 md:p-6 mt-6 space-y-5">
 
-      <!-- AUTO -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <label class="small block mb-1">Marca de coche <span class="accent">*</span></label>
-          <select id="brand" class="w-full field">
-            <option value="">Marca</option>
-          </select>
+      <!-- Progress -->
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="step-dot" id="dot-1"></div>
+          <div class="step-dot" id="dot-2"></div>
+          <div class="step-dot" id="dot-3"></div>
+          <div class="step-dot" id="dot-4"></div>
+          <div class="step-dot" id="dot-5"></div>
         </div>
-        <div>
-          <label class="small block mb-1">Modelo de coche <span class="accent">*</span></label>
-          <select id="model" class="w-full field">
-            <option value="">Modelo</option>
-          </select>
-        </div>
-        <div>
-          <label class="small block mb-1">Año de fabricación <span class="accent">*</span></label>
-          <select id="year" class="w-full field">
-            <option value="">Año</option>
-          </select>
-        </div>
-        <div>
-          <label class="small block mb-1">Tipo de película <span class="accent">*</span></label>
-          <select id="ppf" class="w-full field">
-            <option value="">Seleccionar una opción</option>
-          </select>
-        </div>
+        <div class="text-sm text-slate-300" id="step-label">Paso 1 de 5</div>
       </div>
 
-      <div class="text-center mt-2">
-        <p class="hint font-semibold">Para calcular el costo, seleccione solo una opción<br/>1 o 2</p>
-      </div>
+      <!-- STEP 1 -->
+      <section id="step-1" class="space-y-4">
+        <h2 id="step1-title" class="section-title" tabindex="-1">1) Tu coche</h2>
 
-      <div class="divider"></div>
-
-      <!-- 1. Protección completa -->
-      <div>
-        <div class="section-title">1. Protección completa del coche</div>
-        <select id="basic" class="w-full field mt-2">
-          <option value="">Opciones de protección</option>
-        </select>
-      </div>
-
-      <div class="divider"></div>
-
-      <!-- 2. Protección por partes -->
-      <div>
-        <div class="section-title">2. Protección por partes del coche</div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-3">
-          <div>
-            <div class="col-title">Protección Frontal del Coche</div>
-            <div id="grp-front"></div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div id="wrap-brand">
+            <label class="small block mb-1" for="brand">
+              <span id="lbl-brand">Marca</span> <span id="star-brand" class="accent">*</span>
+            </label>
+            <select id="brand" class="w-full field" required>
+              <option value="">Cargando marcas...</option>
+            </select>
           </div>
-          <div>
-            <div class="col-title">Protección Trasera del Coche</div>
-            <div id="grp-rear"></div>
+
+          <div id="wrap-model">
+            <label class="small block mb-1" for="model">
+              <span id="lbl-model">Modelo</span> <span id="star-model" class="accent">*</span>
+            </label>
+            <select id="model" class="w-full field" disabled required>
+              <option value="">Selecciona una marca</option>
+            </select>
           </div>
-          <div>
-            <div class="col-title">Protección Lateral del Coche</div>
-            <div id="grp-side"></div>
-          </div>
-          <div>
-            <div class="col-title">Partes Adicionales del Coche</div>
-            <div id="grp-extra"></div>
+
+          <div id="wrap-year">
+            <label class="small block mb-1" for="year">
+              <span id="lbl-year">Año</span> <span id="star-year" class="accent">*</span>
+            </label>
+            <select id="year" class="w-full field" required>
+              <option value="">Cargando años...</option>
+            </select>
           </div>
         </div>
-      </div>
 
-      <!-- CONTACTO -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
-        <div>
-          <label class="small block mb-1">Nombre <span class="accent">*</span></label>
-          <input id="name_client" class="w-full field" type="text" placeholder="Nombre" />
-        </div>
-        <div>
-          <label class="small block mb-1">Número de teléfono <span class="accent">*</span></label>
-          <input id="phone" class="w-full field" type="tel" placeholder="700 00 00 00" />
-        </div>
-        <div class="md:col-span-2">
-          <label class="small block mb-1">E-mail <span class="accent">*</span></label>
-          <input id="email_client" class="w-full field" type="email" placeholder="email@dominio.com" />
-        </div>
-      </div>
+        <div id="step1-hint" class="text-sm error"></div>
 
-      <div class="flex items-center gap-2 pt-2">
-        <input id="promo" type="checkbox" class="w-4 h-4 accent-[#f5bf00]" />
-        <label for="promo" class="text-slate-300">Quiero recibir tus ofertas de descuento</label>
-      </div>
+        <div class="flex justify-end pt-2">
+          <button class="btn-yellow" id="next-1" type="button" disabled>Continuar</button>
+        </div>
+      </section>
 
-      <!-- SUBMIT -->
-      <div class="text-center pt-4">
-        <button id="submit" class="btn-yellow">Enviar</button>
-        <div id="msg" class="mt-3 text-sm"></div>
+      <!-- STEP 2 -->
+      <section id="step-2" class="space-y-4 hidden">
+        <h2 id="step2-title" class="section-title" tabindex="-1">2) ¿Qué quieres proteger?</h2>
+
+        <div class="choice-grid">
+          <button class="radio-card text-left" id="card-total" data-flow="total" type="button" aria-pressed="false">
+            <div class="mt-1 w-3 h-3 rounded-full border border-[#141414]" id="dot-total"></div>
+            <div>
+              <div class="font-extrabold" id="flow-total-title">Protección Total</div>
+              <div class="text-sm text-slate-300 mt-1" id="flow-total-desc">Paquetes recomendados (basico / avanzado / maximo).</div>
+            </div>
+          </button>
+
+          <button class="radio-card text-left" id="card-custom" data-flow="custom" type="button" aria-pressed="false">
+            <div class="mt-1 w-3 h-3 rounded-full border border-[#141414]" id="dot-custom"></div>
+            <div>
+              <div class="font-extrabold" id="flow-custom-title">Personalizar</div>
+              <div class="text-sm text-slate-300 mt-1" id="flow-custom-desc">Selecciona partes concretas de la carrocería.</div>
+            </div>
+          </button>
+
+          <button class="radio-card text-left" id="card-otros" data-flow="otros" type="button" aria-pressed="false">
+            <div class="mt-1 w-3 h-3 rounded-full border border-[#141414]" id="dot-otros"></div>
+            <div>
+              <div class="font-extrabold" id="flow-otros-title">Otros servicios</div>
+              <div class="text-sm text-slate-300 mt-1" id="flow-otros-desc">Extras y servicios adicionales (sin partes).</div>
+            </div>
+          </button>
+        </div>
+
+        <div id="step2-hint" class="text-sm error"></div>
+
+        <div class="flex justify-between pt-2">
+          <button class="btn-ghost" id="back-2" type="button">Atrás</button>
+          <button class="btn-yellow" id="next-2" type="button" disabled>Continuar</button>
+        </div>
+      </section>
+
+      <!-- STEP 3 -->
+      <section id="step-3" class="space-y-4 hidden">
+        <h2 class="section-title" id="step3-title" tabindex="-1">3) Configuración</h2>
+
+        <!-- PACKAGES -->
+        <div id="block-packages" class="space-y-3 hidden">
+          <div class="rounded-xl border border-[#2a2a2a] bg-[#121212] p-4 space-y-3">
+            <div class="font-extrabold" id="packages-title">Elige un paquete</div>
+            <div class="text-sm text-slate-300" id="packages-desc">Selecciona basico, avanzado o maximo. Ajustamos detalles contigo después.</div>
+            <div id="packages-buttons" class="grid grid-cols-1 md:grid-cols-3 gap-3"></div>
+          </div>
+
+          <div class="rounded-xl border border-[#2a2a2a] bg-[#121212] p-4 space-y-3">
+            <div class="font-extrabold" id="finish-title-pack">Tipo de cobertura</div>
+
+            <select id="finish" class="w-full field">
+              <option value="">Cargando opciones...</option>
+            </select>
+
+            <div id="pack-warning-box" class="warnbox hidden space-y-2">
+              <div class="title">⚠️ Importante</div>
+              <div id="pack-warning-body" class="text-sm"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PARTS (3B embedded) -->
+        <div id="block-parts" class="space-y-3 hidden">
+
+          <div class="rounded-xl border border-[#2a2a2a] bg-[#121212] p-4 space-y-3">
+            <div>
+              <h3 id="ui-title" class="text-lg font-extrabold">
+                Selección de partes <span class="accent">(Carrocería)</span>
+              </h3>
+              <p id="ui-subtitle" class="text-sm text-slate-300 mt-1"></p>
+            </div>
+
+            <div class="seg rounded-2xl p-1 flex gap-1" role="tablist" aria-label="Zonas">
+              <button id="tab-frontal" class="w-full py-2 rounded-xl active" type="button" role="tab" aria-selected="true">Frontal</button>
+              <button id="tab-lateral" class="w-full py-2 rounded-xl" type="button" role="tab" aria-selected="false">Lateral</button>
+              <button id="tab-trasera" class="w-full py-2 rounded-xl" type="button" role="tab" aria-selected="false">Trasera</button>
+            </div>
+
+            <div class="mt-1 space-y-2" id="panel-list"></div>
+
+            <button id="btn-view" class="btn-ghost w-full md:w-auto" type="button" disabled>
+              Ver mi selección (0)
+            </button>
+          </div>
+
+          <div class="rounded-xl border border-[#2a2a2a] bg-[#121212] p-4 space-y-3">
+            <div class="font-extrabold" id="finish-title-parts">Tipo de cobertura</div>
+
+            <select id="finish_parts" class="w-full field">
+              <option value="">Cargando opciones...</option>
+            </select>
+
+            <div id="parts-warning-box" class="warnbox hidden space-y-2">
+              <div class="title">⚠️ Importante</div>
+              <div id="parts-warning-body" class="text-sm"></div>
+            </div>
+          </div>
+
+          <div class="flex justify-between gap-3 pt-1">
+            <button class="btn-ghost" id="back-3b" type="button">Atrás</button>
+            <button class="btn-yellow" id="next-3b" type="button" disabled>Continuar</button>
+          </div>
+        </div>
+
+        <div id="step3-hint" class="text-sm error"></div>
+
+        <div class="flex justify-between pt-2" id="step3-nav">
+          <button class="btn-ghost" id="back-3" type="button">Atrás</button>
+          <button class="btn-yellow" id="next-3" type="button" disabled>Continuar</button>
+        </div>
+      </section>
+
+      <!-- STEP 4 -->
+      <section id="step-4" class="space-y-4 hidden">
+        <h2 id="step4-title" class="section-title" tabindex="-1">4) Extras y servicios</h2>
+
+        <div class="seg rounded-2xl p-1 flex gap-1" role="tablist" aria-label="Extras y Servicios">
+          <button id="tab-step4-extras" class="w-full py-2 rounded-xl active" type="button" role="tab" aria-selected="true">Extras</button>
+          <button id="tab-step4-servicios" class="w-full py-2 rounded-xl" type="button" role="tab" aria-selected="false">Servicios</button>
+        </div>
+
+        <div class="mt-3 space-y-2" id="step4-list"></div>
+
+        <div class="flex items-center justify-between gap-3 pt-2">
+          <div class="text-sm text-slate-300" id="step4-count">Ninguno seleccionado</div>
+          <div class="flex gap-2">
+            <button class="btn-ghost" id="back-4" type="button">Atrás</button>
+            <button class="btn-yellow" id="next-4" type="button">Continuar</button>
+          </div>
+        </div>
+
+        <div id="step4-hint" class="text-sm error"></div>
+      </section>
+
+      <!-- STEP 5 -->
+      <section id="step-5" class="space-y-4 hidden">
+        <h2 id="step5-title" class="section-title" tabindex="-1">5) Contacto</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="small block mb-1" for="name_client">
+              <span id="lbl-name">Nombre</span> <span id="star-name" class="accent">*</span>
+            </label>
+            <input id="name_client" class="w-full field" type="text" placeholder="Tu nombre" required autocomplete="name" />
+            <div id="name-hint" class="text-xs error mt-1 hidden"></div>
+          </div>
+          <div>
+            <label class="small block mb-1" for="phone">
+              <span id="lbl-phone">Teléfono</span> <span id="star-phone" class="accent">*</span>
+            </label>
+            <input id="phone" class="w-full field" type="tel" placeholder="600 00 00 00" required inputmode="tel" autocomplete="tel" />
+            <div id="phone-hint" class="text-xs error mt-1 hidden"></div>
+          </div>
+          <div class="md:col-span-2">
+            <label class="small block mb-1" for="email_client">
+              <span id="lbl-email">Email</span> <span id="star-email" class="accent">*</span>
+            </label>
+            <input id="email_client" class="w-full field" type="email" placeholder="tu@email.com" required inputmode="email" autocomplete="email" />
+            <div id="email-hint" class="text-xs error mt-1 hidden"></div>
+          </div>
+          <div class="md:col-span-2">
+            <label class="small block mb-1" for="comment" id="lbl-comment">Comentario (opcional)</label>
+            <textarea id="comment" class="w-full field" rows="3" placeholder="Ej.: quiero mate, uso en carretera, etc."></textarea>
+          </div>
+
+          <div class="md:col-span-2" id="wrap-center">
+            <label class="small block mb-1" for="install_center" id="lbl-center">Centro de instalación (opcional)</label>
+            <select id="install_center" class="w-full field">
+              <option value="">Cargando centros...</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="space-y-3 pt-2">
+          <div class="rounded-xl border border-[#3a3a3a] bg-[#141414] p-4 space-y-3">
+            <label class="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                id="consent"
+                class="w-5 h-5 accent-[#f5bf00] mt-0.5 cursor-pointer"
+                required
+              />
+              <span id="privacy-text" class="text-sm text-slate-300 leading-relaxed">
+                <strong>He leído y acepto</strong> la
+                <a href="https://www.ppfbarcelona.es/pol%C3%ADtica-de-privacidad" target="_blank" rel="noopener noreferrer" class="underline">
+                  Política de privacidad
+                </a>
+                y el tratamiento de mis datos personales para gestionar mi solicitud de presupuesto.
+              </span>
+            </label>
+            <div id="consent-hint" class="text-xs error hidden"></div>
+          </div>
+
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input id="promo" type="checkbox" class="w-4 h-4 accent-[#f5bf00] cursor-pointer" />
+            <span id="promo-text" class="text-sm text-slate-300">Quiero recibir ofertas y novedades (opcional)</span>
+          </label>
+        </div>
+
+        <div class="space-y-2 pt-2">
+          <div id="send-question" class="text-sm font-semibold text-slate-200">¿Dónde prefieres recibir el presupuesto?</div>
+          <div class="seg rounded-2xl p-1 flex gap-1" role="tablist" aria-label="Canal de envío">
+            <button id="send-tab-wa" class="w-full py-2 rounded-xl" type="button" role="tab" aria-selected="false">
+              📱 WhatsApp
+            </button>
+            <button id="send-tab-email" class="w-full py-2 rounded-xl active" type="button" role="tab" aria-selected="true">
+              📧 Email
+            </button>
+          </div>
+        </div>
+
+        <div class="flex justify-between pt-3 gap-3">
+          <button class="btn-ghost" id="back-5" type="button">Atrás</button>
+          <button id="submit" class="btn-yellow" type="button">
+            <span id="submit-text">Enviar presupuesto</span>
+            <span id="submit-spinner" class="hidden">
+              <span class="spinner"></span> Enviando...
+            </span>
+          </button>
+        </div>
+
+        <div id="msg" class="text-sm"></div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- Bottom sheet -->
+  <div id="backdrop" class="sheet-backdrop" aria-hidden="true"></div>
+  <div id="sheet" class="sheet" role="dialog" aria-modal="true" aria-label="Tu selección">
+    <div class="grab"></div>
+    <div class="px-4 pb-5">
+      <div class="flex items-center justify-between">
+        <div class="text-lg font-extrabold" id="sheet-title">Tu selección</div>
+        <button id="btn-close" class="btn-yellow" style="padding:.55rem 1.2rem" type="button">Cerrar</button>
       </div>
+      <div id="sheet-list" class="mt-3 space-y-2"></div>
     </div>
   </div>
 
   <script>
-    // ========= ТВОИ ЗНАЧЕНИЯ =========
+    /// ========= CONFIGURATION =========
     const SUPABASE_URL = "https://pxgjwdhwxtzizhgotqur.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4Z2p3ZGh3eHR6aXpoZ290cXVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMwMDc4MjAsImV4cCI6MjA2ODU4MzgyMH0.H-31tjjjcNAn7jpMutYZN6LLImqdsVvYoJWxhYtER84";
     const WEBHOOK_URL = "https://primary-production-8e17.up.railway.app/webhook/9d3ac003-abf6-446b-a415-18ba2b4affb3";
+    const PRIVACY_URL = "https://www.ppfbarcelona.es/pol%C3%ADtica-de-privacidad";
+    const FORM_KEY = "quote_v2";
     // =================================
 
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
     const byId = (id) => document.getElementById(id);
-    const msg  = byId('msg');
 
-    function setMsg(text, ok = true) {
-      msg.textContent = text || '';
-      msg.style.color = ok ? '#7CFC9A' : '#ff6a3d';
+    // Cache common DOM
+    const msgEl = byId('msg');
+    const stepLabelEl = byId('step-label');
+    const steps = [1,2,3,4,5].map(i => byId(`step-${i}`));
+    const dots = [1,2,3,4,5].map(i => byId(`dot-${i}`));
+
+    // Helpers
+    const norm = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+
+    function escapeHtml(text){
+      const div = document.createElement('div');
+      div.textContent = String(text ?? '');
+      return div.innerHTML;
     }
 
-    const norm = (s) =>
-      (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+    function setMsg(text, ok=true){
+      msgEl.textContent = text || '';
+      msgEl.className = ok ? 'text-sm ok' : 'text-sm error';
+    }
 
-    // Годы
-    (function fillYears() {
-      const y = byId('year');
-      const now = new Date().getFullYear();
-      const from = now + 1, to = 2000;
-      const items = ['<option value="">Año</option>'];
-      for (let yr = from; yr >= to; yr--) items.push(`<option value="${yr}">${yr}</option>`);
-      y.innerHTML = items.join('');
-    })();
-
-    // ===== Загрузка из Supabase =====
-    async function loadBrands() {
-      const el = byId('brand'); el.disabled = true;
+    function blurActive(){
       try {
-        const { data } = await supabase.from('car_marcas').select('marca').order('marca', { ascending:true }).throwOnError();
-        const brands = [...new Set((data||[]).map(r => r.marca).filter(Boolean))];
-        el.innerHTML = '<option value="">Marca</option>' + brands.map(b => `<option value="${b}">${b}</option>`).join('');
-      } catch (e) {
-        console.error('car_marcas[marca]:', e);
-        el.innerHTML = '<option value="">Error cargando marcas</option>';
-      } finally { el.disabled = false; }
+        if (document.activeElement && document.activeElement.blur) {
+          document.activeElement.blur();
+        }
+      } catch(e){}
     }
 
-    async function loadModels(brand) {
-      const el = byId('model'); el.disabled = true;
-      el.innerHTML = '<option value="">Modelo</option>';
-      if (!brand) { el.disabled = false; return; }
+    function announceToScreenReader(message){
+      const el = document.createElement('div');
+      el.setAttribute('role', 'status');
+      el.setAttribute('aria-live', 'polite');
+      el.className = 'sr-only';
+      el.textContent = message;
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 1000);
+    }
+
+    // Analytics tracking helpers
+    function trackEvent(eventName, params = {}){
       try {
-        const { data } = await supabase.from('car_marcas').select('modelo').eq('marca', brand).order('modelo', { ascending:true }).throwOnError();
-        const models = [...new Set((data||[]).map(r => r.modelo).filter(Boolean))];
-        el.innerHTML = '<option value="">Modelo</option>' + models.map(m => `<option value="${m}">${m}</option>`).join('');
-      } catch (e) {
-        console.error('car_marcas[modelo]:', e);
-        el.innerHTML = '<option value="">Error cargando modelos</option>';
-      } finally { el.disabled = false; }
-    }
-
-    async function loadFilmTypes() {
-      const el = byId('ppf'); el.disabled = true;
-      try {
-        const { data } = await supabase.from('film_coefficients').select('tipo_ppf').order('tipo_ppf', { ascending:true }).throwOnError();
-        const types = [...new Set((data||[]).map(r => r.tipo_ppf).filter(Boolean))];
-        el.innerHTML = '<option value="">Seleccionar una opción</option>' + types.map(t => `<option value="${t}">${t}</option>`).join('');
-      } catch (e) {
-        console.error('film_coefficients.tipo_ppf:', e);
-        el.innerHTML = '<option value="">Error cargando películas</option>';
-      } finally { el.disabled = false; }
-    }
-
-    async function loadBasicOptions() {
-      const el = byId('basic'); el.disabled = true;
-      try {
-        const { data } = await supabase.from('price').select('service_name').eq('type','basic').throwOnError();
-        const names = (data||[]).map(r => r.service_name);
-        el.innerHTML = '<option value="">Opciones de protección</option>' + names.map(n => `<option value="${n}">${n}</option>`).join('');
-      } catch (e) {
-        console.error('price basic:', e);
-        el.innerHTML = '<option value="">Error cargando opciones</option>';
-      } finally { el.disabled = false; }
-    }
-
-    const GROUP_MAP = {
-      [norm("parachoques delantero")]:"front",
-      [norm("capó")]:"front",
-      [norm("aleta delantera derecha")]:"front",
-      [norm("aleta delantera izquierda")]:"front",
-      [norm("faro derecho")]:"front",
-      [norm("faro izquierdo")]:"front",
-      [norm("parachoques trasero")]:"rear",
-      [norm("aleta trasera derecha")]:"rear",
-      [norm("aleta trasera izquierda")]:"rear",
-      [norm("puerta del maletero")]:"rear",
-      [norm("puerta delantera derecha")]:"side",
-      [norm("puerta delantera izquierda")]:"side",
-      [norm("puerta trasera derecha")]:"side",
-      [norm("puerta trasera izquierda")]:"side",
-      [norm("retrovisor derecho")]:"side",
-      [norm("retrovisor izquierdo")]:"side",
-      [norm("talonera derecha")]:"side",
-      [norm("talonera izquierda")]:"side",
-      [norm("techo")]:"side",
-      [norm("alerón")]:"extra",
-      [norm("elementos decorativos interiores")]:"extra",
-      [norm("elementos exteriores en negro piano")]:"extra",
-      [norm("estante del parachoques trasero")]:"extra",
-      [norm("molduras exterior de ventanas")]:"extra",
-      [norm("pantalla")]:"extra",
-      [norm("parabrisas")]:"extra",
-      [norm("pilares del parabrisas")]:"extra",
-      [norm("tira del techo")]:"extra"
-    };
-
-    function capitalizeWords(str){ return (str||'').replace(/\b\w/g, c => c.toUpperCase()); }
-    function checkboxRow(name,id){
-      const n = capitalizeWords(name);
-      return `<label class="checkbox-row"><input type="checkbox" class="partial-item" value="${n}" id="${id}"><span>${n}</span></label>`;
-    }
-
-    async function loadPartialGrouped() {
-      const front = byId('grp-front'), rear = byId('grp-rear'), side = byId('grp-side'), extra = byId('grp-extra');
-      front.innerHTML = rear.innerHTML = side.innerHTML = extra.innerHTML = '';
-      try {
-        const { data } = await supabase.from('price').select('service_name').eq('type','partial').throwOnError();
-        (data||[]).forEach((r,idx)=>{
-          const name = r.service_name || '';
-          const key  = GROUP_MAP[norm(name)] || 'extra';
-          const id = 'p-'+idx, html = checkboxRow(name,id);
-          if (key==='front') front.insertAdjacentHTML('beforeend',html);
-          else if (key==='rear') rear.insertAdjacentHTML('beforeend',html);
-          else if (key==='side') side.insertAdjacentHTML('beforeend',html);
-          else extra.insertAdjacentHTML('beforeend',html);
-        });
-      } catch (e) {
-        console.error('price partial:', e);
-        front.innerHTML = '<div class="text-red-400 text-sm">Error cargando servicios</div>';
+        if (window.gtag){
+          gtag('event', eventName, params);
+        }
+        // if (window.fbq){
+        //   fbq('trackCustom', eventName, params);
+        // }
+      } catch(e){
+        console.warn('Analytics tracking failed:', e);
       }
     }
 
-    // Сбор данных
+    // ---------- UI from ui_form_fields ----------
+    const ui = {
+      map: new Map(),  // field_key -> row
+      ready: false
+    };
+
+    function parseMeta(m){
+      if (!m) return {};
+      if (typeof m === 'object') return m;
+      if (typeof m === 'string'){
+        try { return JSON.parse(m); } catch(e){ return {}; }
+      }
+      return {};
+    }
+
+    function uiRow(key){
+      return ui.map.get(String(key)) || null;
+    }
+
+    function uiLabel(key, fallback=''){
+      const r = uiRow(key);
+      const v = r?.label;
+      return (v != null && String(v).trim() !== '') ? String(v) : fallback;
+    }
+
+    function uiMeta(key){
+      const r = uiRow(key);
+      return parseMeta(r?.meta);
+    }
+
+    function uiEnabled(key, fallback=true){
+      const r = uiRow(key);
+      if (!r) return fallback;
+      return r.enabled !== false;
+    }
+
+    function uiRequired(key, fallback=false){
+      const r = uiRow(key);
+      if (!r) return fallback;
+      return r.required === true;
+    }
+
+    function stripStar(s){
+      return String(s||'').replace(/\*/g,'').trim();
+    }
+
+    function setStar(starId, required){
+      const el = byId(starId);
+      if (!el) return;
+      el.style.display = required ? '' : 'none';
+    }
+
+    function setText(id, text){
+      const el = byId(id);
+      if (!el) return;
+      el.textContent = String(text ?? '');
+    }
+
+    function setHTML(id, html){
+      const el = byId(id);
+      if (!el) return;
+      el.innerHTML = String(html ?? '');
+    }
+
+    function emphasizeParen(label){
+      // Делает ( ... ) желтым как сейчас в дизайне
+      const s = String(label || '').trim();
+      const m = s.match(/^(.*)\((.*)\)(.*)$/);
+      if (!m) return escapeHtml(s);
+      const before = escapeHtml(m[1]);
+      const mid = escapeHtml('(' + m[2] + ')');
+      const after = escapeHtml(m[3]);
+      return `${before}<span class="accent">${mid}</span>${after}`;
+    }
+
+    function applyUI(){
+      // HERO
+      setText('hero-title', uiLabel('hero_title', byId('hero-title')?.textContent || ''));
+      setText('hero-subtitle', uiLabel('hero_subtitle', byId('hero-subtitle')?.textContent || ''));
+
+      // Step titles
+      setText('step1-title', uiLabel('step1_title', byId('step1-title')?.textContent || ''));
+      setText('step2-title', uiLabel('step2_title', byId('step2-title')?.textContent || ''));
+      setText('step4-title', uiLabel('step4_title', byId('step4-title')?.textContent || ''));
+      setText('step5-title', uiLabel('step5_title', byId('step5-title')?.textContent || ''));
+
+      // Step label template
+      // (используется в showStep())
+
+      // Step1 labels
+      setText('lbl-brand', stripStar(uiLabel('brand', 'Marca')));
+      setText('lbl-model', stripStar(uiLabel('model', 'Modelo')));
+      setText('lbl-year',  stripStar(uiLabel('year', 'Año')));
+      setStar('star-brand', uiRequired('brand', true));
+      setStar('star-model', uiRequired('model', true));
+      setStar('star-year',  uiRequired('year', true));
+
+      // Step2 flow cards
+      setText('flow-total-title', uiLabel('flow_total', 'Protección Total'));
+      setText('flow-custom-title', uiLabel('flow_custom', 'Personalizar'));
+      setText('flow-otros-title', uiLabel('flow_otros', 'Otros servicios'));
+
+      setText('flow-total-desc', (uiMeta('flow_total_desc').text || ''));
+      setText('flow-custom-desc', (uiMeta('flow_custom_desc').text || ''));
+      setText('flow-otros-desc', (uiMeta('flow_otros_desc').text || ''));
+
+      // Step2 buttons
+      setText('back-2', uiLabel('btn_back_2', byId('back-2')?.textContent || 'Atrás'));
+      setText('next-2', uiLabel('btn_next_2', byId('next-2')?.textContent || 'Continuar'));
+
+      // Step3 titles (будут переключаться enterStep3())
+      // Step3 buttons
+      setText('back-3', uiLabel('btn_back_3', byId('back-3')?.textContent || 'Atrás'));
+      setText('next-3', uiLabel('btn_next_3', byId('next-3')?.textContent || 'Continuar'));
+      setText('back-3b', uiLabel('btn_back_3b', byId('back-3b')?.textContent || 'Atrás'));
+      setText('next-3b', uiLabel('btn_next_3b', byId('next-3b')?.textContent || 'Continuar'));
+
+      // Packages block
+      setText('packages-title', uiLabel('packages_title', byId('packages-title')?.textContent || 'Elige un paquete'));
+      const def = uiMeta('packages_title').default_text || byId('packages-desc')?.textContent || '';
+      setText('packages-desc', def);
+
+      // Finish titles
+      setText('finish-title-pack', uiLabel('finish', byId('finish-title-pack')?.textContent || 'Tipo de cobertura'));
+      setText('finish-title-parts', uiLabel('finish', byId('finish-title-parts')?.textContent || 'Tipo de cobertura'));
+
+      // Parts block title/subtitle
+      const partsLabel = uiLabel('parts_block_title', 'Selección de partes (Carrocería)');
+      setHTML('ui-title', emphasizeParen(partsLabel));
+      const partsSub = uiMeta('parts_block_title').subtitle || '';
+      setText('ui-subtitle', partsSub);
+
+      // Parts tabs
+      setText('tab-frontal', uiLabel('tab_frontal', byId('tab-frontal')?.textContent || 'Frontal'));
+      setText('tab-lateral', uiLabel('tab_lateral', byId('tab-lateral')?.textContent || 'Lateral'));
+      setText('tab-trasera', uiLabel('tab_trasera', byId('tab-trasera')?.textContent || 'Trasera'));
+
+      // Sheet texts
+      setText('sheet-title', uiLabel('sheet_title', byId('sheet-title')?.textContent || 'Tu selección'));
+      setText('btn-close', uiLabel('sheet_btn_close', byId('btn-close')?.textContent || 'Cerrar'));
+
+      // Step4
+      setText('tab-step4-extras', uiLabel('extras', byId('tab-step4-extras')?.textContent || 'Extras'));
+      setText('tab-step4-servicios', uiLabel('servicios', byId('tab-step4-servicios')?.textContent || 'Servicios'));
+      setText('back-4', uiLabel('btn_back_4', byId('back-4')?.textContent || 'Atrás'));
+      setText('next-4', uiLabel('btn_next_4', byId('next-4')?.textContent || 'Continuar'));
+      setText('step4-count', uiLabel('step4_none_selected', byId('step4-count')?.textContent || 'Ninguno seleccionado'));
+
+      // Step5 labels required stars
+      setText('lbl-name', stripStar(uiLabel('name_client', 'Nombre')));
+      setText('lbl-phone', stripStar(uiLabel('phone', 'Teléfono')));
+      setText('lbl-email', stripStar(uiLabel('email_client', 'Email')));
+      setStar('star-name', uiRequired('name_client', true));
+      setStar('star-phone', uiRequired('phone', true));
+      setStar('star-email', uiRequired('email_client', true));
+
+      setText('lbl-comment', uiLabel('comment', byId('lbl-comment')?.textContent || 'Comentario (opcional)'));
+
+      // Center enable/label
+      const centerEnabled = uiEnabled('center', true);
+      byId('wrap-center')?.classList.toggle('hidden', !centerEnabled);
+      setText('lbl-center', uiLabel('center', byId('lbl-center')?.textContent || 'Centro de instalación (opcional)'));
+
+      // Promo / send question
+      setText('promo-text', uiLabel('promo', byId('promo-text')?.textContent || ''));
+      setText('send-question', uiLabel('send_channel_question', byId('send-question')?.textContent || ''));
+
+      // Send channel tab labels (оставляем эмодзи в дизайне)
+      const waLabel = uiLabel('cta_whatsapp', 'WhatsApp');
+      const emLabel = uiLabel('cta_email', 'Email');
+
+      const waCore = String(waLabel).replace(/^enviar\s+por\s+/i,'').trim() || 'WhatsApp';
+      const emCore = String(emLabel).replace(/^enviar\s+por\s+/i,'').trim() || 'Email';
+
+      setText('send-tab-wa', `📱 ${waCore}`);
+      setText('send-tab-email', `📧 ${emCore}`);
+
+      // Back + submit
+      setText('back-5', uiLabel('btn_back_5', byId('back-5')?.textContent || 'Atrás'));
+      setText('submit-text', uiLabel('btn_submit', byId('submit-text')?.textContent || 'Enviar presupuesto'));
+
+      // Privacy text (из meta)
+      const p = uiMeta('privacy_text');
+      if (p && (p.text || p.url || p.link_text)){
+        const url = p.url || PRIVACY_URL;
+        const linkText = p.link_text || 'Política de privacidad';
+        const fullText = p.text || '';
+
+        // собираем HTML, сохраняя жирным "He leído y acepto" если есть
+        const idx = fullText.indexOf(linkText);
+        const before = idx >= 0 ? fullText.slice(0, idx) : fullText;
+        const after = idx >= 0 ? fullText.slice(idx + linkText.length) : '';
+
+        const strongPhrase = 'He leído y acepto';
+        const beforeEsc = escapeHtml(before);
+        const afterEsc = escapeHtml(after);
+
+        const beforeHtml = beforeEsc.replace(
+          escapeHtml(strongPhrase),
+          `<strong>${escapeHtml(strongPhrase)}</strong>`
+        );
+
+        const a = `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="underline">${escapeHtml(linkText)}</a>`;
+        const html = `${beforeHtml}${a}${afterEsc}`.trim();
+        if (html) setHTML('privacy-text', html);
+      }
+
+      ui.ready = true;
+    }
+
+    async function loadUIFields(){
+      try{
+        const { data } = await supabase
+          .from('ui_form_fields')
+          .select('field_key,step,label,enabled,required,sort_order,meta')
+          .eq('form_key', FORM_KEY)
+          .eq('enabled', true)
+          .order('sort_order', { ascending: true })
+          .throwOnError();
+
+        ui.map.clear();
+        (data || []).forEach(r => {
+          if (r && r.field_key) ui.map.set(String(r.field_key), r);
+        });
+
+        applyUI();
+      } catch(e){
+        console.warn('ui_form_fields load failed:', e);
+        // не ломаем форму, просто остаются дефолтные тексты
+      }
+    }
+
+    // App data (no window.__globals)
+    const appData = {
+      centers: new Map(),
+      finishes: new Map(),
+      partsCatalog: { frontal: [], lateral: [], trasera: [] },
+      extrasList: [],
+      serviciosList: []
+    };
+
+    // ----------------- STATE -----------------
+    const state = {
+      step: 1,
+      prevStep: null,
+      flow: "",
+
+      brand: "",
+      model: "",
+      year: "",
+
+      install_center_id: "",
+      install_center_title: "",
+
+      finish_key: "",
+      finish_title: "",
+      finish_allow_partial: true,
+      finish_warning_partial: "",
+
+      selectedPackage: "",
+      selectedParts: new Set(),
+      selectedExtras: new Set(),
+      selectedServicios: new Set(),
+
+      send_channel: "email",
+
+      step4BackTarget: 3,
+      startedAt: Date.now(),
+
+      submitting: false,
+      lastSubmitAt: 0
+    };
+
+    // ----------------- Progress save (no PII) -----------------
+    const PROGRESS_KEY = 'ppf_form_progress_v1';
+
+    function saveProgress(){
+      const payload = {
+        step: state.step,
+        flow: state.flow,
+        brand: state.brand,
+        model: state.model,
+        year: state.year,
+        finish_key: state.finish_key,
+        selectedPackage: state.selectedPackage,
+        selectedParts: [...state.selectedParts],
+        selectedExtras: [...state.selectedExtras],
+        selectedServicios: [...state.selectedServicios],
+        send_channel: state.send_channel,
+        timestamp: Date.now()
+      };
+      try {
+        localStorage.setItem(PROGRESS_KEY, JSON.stringify(payload));
+      } catch(e){
+        console.warn('Could not save progress:', e);
+      }
+    }
+
+    function clearProgress(){
+      try { localStorage.removeItem(PROGRESS_KEY); } catch(e){}
+    }
+
+    function restoreProgressIfAny(){
+      try{
+        const raw = localStorage.getItem(PROGRESS_KEY);
+        if (!raw) return false;
+        const saved = JSON.parse(raw);
+        if (!saved?.timestamp) return false;
+        const fresh = (Date.now() - saved.timestamp) < 30 * 60 * 1000;
+        if (!fresh) { clearProgress(); return false; }
+
+        const ok = confirm('¿Continuar donde lo dejaste?');
+        if (!ok) { clearProgress(); return false; }
+
+        state.flow = saved.flow || '';
+        state.brand = saved.brand || '';
+        state.model = saved.model || '';
+        state.year = saved.year || '';
+        state.finish_key = saved.finish_key || '';
+        state.selectedPackage = saved.selectedPackage || '';
+        state.selectedParts = new Set(saved.selectedParts || []);
+        state.selectedExtras = new Set(saved.selectedExtras || []);
+        state.selectedServicios = new Set(saved.selectedServicios || []);
+        state.send_channel = saved.send_channel === 'whatsapp' ? 'whatsapp' : 'email';
+        state.step = Number(saved.step || 1);
+
+        trackEvent('form_progress_restored', { step: state.step });
+        return true;
+      } catch(e){
+        clearProgress();
+        return false;
+      }
+    }
+
+    // ----------------- Submit fallback queue (LocalStorage) -----------------
+    const PENDING_KEY = 'ppf_pending_leads_v1';
+
+    function readPending(){
+      try{
+        const arr = JSON.parse(localStorage.getItem(PENDING_KEY) || '[]');
+        const now = Date.now();
+        return (Array.isArray(arr) ? arr : [])
+          .filter(x => x && x.timestamp && (now - x.timestamp) < 24*60*60*1000)
+          .slice(0, 10);
+      } catch(e){
+        return [];
+      }
+    }
+
+    function writePending(list){
+      try {
+        localStorage.setItem(PENDING_KEY, JSON.stringify((list || []).slice(0,10)));
+      } catch(e){
+        console.warn('Could not write pending:', e);
+      }
+    }
+
+    function enqueuePending(payload){
+      const list = readPending();
+      list.unshift({ payload, timestamp: Date.now() });
+      writePending(list);
+      console.log('💾 Solicitud guardada localmente. Se reenviará automáticamente.');
+    }
+
+    async function flushPending(){
+      const list = readPending();
+      if (!list.length) return;
+
+      console.log(`🔄 Reintentando enviar ${list.length} solicitudes pendientes...`);
+
+      const keep = [];
+      let sentCount = 0;
+
+      for (const item of list){
+        try{
+          await postToWebhook(item.payload, { silent: true });
+          sentCount++;
+          console.log('✅ Solicitud pendiente enviada');
+        } catch(e){
+          keep.push(item);
+        }
+      }
+
+      if (sentCount > 0){
+        console.log(`✅ ${sentCount} solicitudes enviadas con éxito`);
+        trackEvent('pending_leads_flushed', { count: sentCount });
+      }
+
+      writePending(keep);
+    }
+
+    // ----------------- STEP CONTROL -----------------
+    function stepLabelText(step){
+      const tpl = uiLabel('step_label_template', 'Paso {step} de 5');
+      return String(tpl).replace('{step}', String(step));
+    }
+
+    function showStep(n){
+      blurActive();
+      state.prevStep = state.step;
+      state.step = n;
+
+      steps.forEach((el, idx) => el.classList.toggle('hidden', (idx+1) !== n));
+      dots.forEach((el, idx) => el.classList.toggle('active', (idx+1) === n));
+
+      stepLabelEl.textContent = stepLabelText(n);
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      const heading = byId(`step-${n}`)?.querySelector('.section-title');
+      if (heading){
+        heading.setAttribute('tabindex','-1');
+        setTimeout(() => {
+          heading.focus({ preventScroll: true });
+          announceToScreenReader(stepLabelText(n));
+        }, 100);
+      }
+
+      saveProgress();
+
+      trackEvent('form_step_viewed', {
+        step: n,
+        flow: state.flow,
+        time_elapsed: Math.round((Date.now() - state.startedAt) / 1000)
+      });
+    }
+
+    // ----------------- LOAD: Brands/Models/Years -----------------
+    function placeholderText(key, fallback){
+      // В таблице у тебя есть brand_placeholder/model_placeholder/year_placeholder
+      const t = uiLabel(key, '');
+      return (t && t.trim()) ? t.trim() : fallback;
+    }
+
+    async function loadBrands(){
+      const el = byId('brand');
+      el.disabled = true;
+      el.innerHTML = '<option value="">Cargando marcas...</option>';
+      try{
+        const { data } = await supabase.from('car_marcas')
+          .select('marca')
+          .order('marca', { ascending:true })
+          .throwOnError();
+
+        const brands = [...new Set((data||[]).map(r=>r.marca).filter(Boolean))];
+
+        const ph = placeholderText('brand_placeholder', 'Selecciona una marca');
+        el.innerHTML =
+          `<option value="" disabled selected>${escapeHtml(ph)}</option>` +
+          brands.map(b=>`<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`).join('');
+      } catch(e){
+        console.error('loadBrands:', e);
+        el.innerHTML = '<option value="">Error al cargar marcas. Recarga la página.</option>';
+      } finally {
+        el.disabled = false;
+      }
+    }
+
+    async function loadModels(brand){
+      const el = byId('model');
+      el.disabled = true;
+
+      if (!brand){
+        const ph = placeholderText('model_placeholder', 'Selecciona un modelo');
+        el.innerHTML = `<option value="" disabled selected>${escapeHtml(ph)}</option>`;
+        el.disabled = true;
+        return;
+      }
+
+      el.innerHTML = '<option value="">Cargando modelos...</option>';
+
+      try{
+        const { data } = await supabase.from('car_marcas')
+          .select('modelo')
+          .eq('marca', brand)
+          .order('modelo', { ascending:true })
+          .throwOnError();
+
+        const models = [...new Set((data||[]).map(r=>r.modelo).filter(Boolean))];
+        const ph = placeholderText('model_placeholder', 'Selecciona un modelo');
+
+        el.innerHTML =
+          `<option value="" disabled selected>${escapeHtml(ph)}</option>` +
+          models.map(m=>`<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('');
+      } catch(e){
+        console.error('loadModels:', e);
+        el.innerHTML = '<option value="">Error al cargar modelos.</option>';
+      } finally {
+        el.disabled = false;
+      }
+    }
+
+    async function loadYears(){
+      const el = byId('year');
+      el.disabled = true;
+      el.innerHTML = '<option value="">Cargando años...</option>';
+      try{
+        const { data } = await supabase.from('año_coefficients')
+          .select('año')
+          .order('año', { ascending:false })
+          .throwOnError();
+
+        const years = [...new Set((data||[]).map(r=>String(r.año)).filter(Boolean))];
+        const ph = placeholderText('year_placeholder', 'Selecciona un año');
+
+        el.innerHTML =
+          `<option value="" disabled selected>${escapeHtml(ph)}</option>` +
+          years.map(y=>`<option value="${escapeHtml(y)}">${escapeHtml(y)}</option>`).join('');
+      } catch(e){
+        console.error('loadYears:', e);
+        el.innerHTML = '<option value="">Error al cargar años.</option>';
+      } finally {
+        el.disabled = false;
+      }
+    }
+
+    // ----------------- LOAD: install_centers -----------------
+    async function loadInstallCenters(){
+      const el = byId('install_center');
+      el.disabled = true;
+      el.innerHTML = '<option value="">Cargando centros...</option>';
+      try{
+        const { data } = await supabase.from('install_centers')
+          .select('id,title,enabled,sort_order')
+          .eq('enabled', true)
+          .order('sort_order', { ascending:true })
+          .throwOnError();
+
+        const rows = (data||[]).filter(r=>r.id && r.title);
+        el.innerHTML =
+          '<option value="">Selecciona una opción</option>' +
+          rows.map(r=>`<option value="${escapeHtml(String(r.id))}">${escapeHtml(r.title)}</option>`).join('');
+
+        appData.centers = new Map(rows.map(r=>[String(r.id), r]));
+      } catch(e){
+        console.error('loadInstallCenters:', e);
+        el.innerHTML = '<option value="">Error al cargar centros.</option>';
+      } finally {
+        el.disabled = false;
+      }
+    }
+
+    // ----------------- LOAD: Finishes -----------------
+    async function loadFinishes(){
+      const finishSel = byId('finish');
+      const finishSelParts = byId('finish_parts');
+      finishSel.innerHTML = '<option value="">Cargando opciones...</option>';
+      finishSelParts.innerHTML = '<option value="">Cargando opciones...</option>';
+
+      try{
+        const { data } = await supabase.from('film_finishes')
+          .select('finish_key,title,enabled,sort_order,allow_partial,warning_partial')
+          .eq('enabled', true)
+          .order('sort_order', { ascending:true })
+          .throwOnError();
+
+        const rows = (data||[]).filter(r=>r.finish_key && r.title);
+
+        const options =
+          '<option value="" disabled selected>Selecciona una opción</option>' +
+          rows.map(r=>`<option value="${escapeHtml(r.finish_key)}">${escapeHtml(r.title)}</option>`).join('');
+
+        finishSel.innerHTML = options;
+        finishSelParts.innerHTML = options;
+
+        appData.finishes = new Map(rows.map(r=>[r.finish_key, r]));
+      } catch(e){
+        console.error('loadFinishes:', e);
+        finishSel.innerHTML = '<option value="">Error al cargar opciones.</option>';
+        finishSelParts.innerHTML = '<option value="">Error al cargar opciones.</option>';
+      }
+    }
+
+    // ----------------- LOAD: price_ui + price (join) -----------------
+    async function loadPriceUI(){
+      try{
+        const { data } = await supabase.from('price_ui')
+          .select('price_id, enabled, sort_order, ui_step, ui_block, ui_group, ui_tab, price:price_id(service_name,type)')
+          .eq('enabled', true)
+          .order('sort_order', { ascending:true })
+          .throwOnError();
+
+        const rows = (data||[]).filter(r=>r.price && r.price.service_name);
+
+        const packages = rows
+          .filter(r => r.ui_step === 3 && r.ui_block === 'paquetes' && r.price.type === 'basic')
+          .map(r => ({ price_id: String(r.price_id), name: String(r.price.service_name), sort_order: r.sort_order }));
+
+        renderPackages(packages);
+
+        const parts = rows
+          .filter(r => r.ui_step === 3 && r.ui_block === 'partes' && r.price.type === 'partial')
+          .map(r => ({ price_id: String(r.price_id), name: String(r.price.service_name), group: r.ui_group, sort_order: r.sort_order }));
+
+        const partsCatalog = { frontal: [], lateral: [], trasera: [] };
+        for (const p of parts){
+          const g = (p.group || '').toLowerCase();
+          if (g === 'front') partsCatalog.frontal.push(p);
+          else if (g === 'side') partsCatalog.lateral.push(p);
+          else if (g === 'rear') partsCatalog.trasera.push(p);
+        }
+        appData.partsCatalog = partsCatalog;
+
+        const extras = rows
+          .filter(r => r.ui_step === 4 && r.ui_block === 'extras' && r.price.type === 'partial')
+          .map(r => ({ price_id: String(r.price_id), name: String(r.price.service_name), sort_order: r.sort_order }));
+
+        const servicios = rows
+          .filter(r => r.ui_step === 4 && r.ui_block === 'servicios' && r.price.type === 'partial')
+          .map(r => ({ price_id: String(r.price_id), name: String(r.price.service_name), sort_order: r.sort_order }));
+
+        appData.extrasList = extras;
+        appData.serviciosList = servicios;
+
+        renderStep4List('extras');
+      } catch(e){
+        console.error('price_ui load:', e);
+        byId('packages-buttons').innerHTML = '<div class="text-sm error">Error cargando paquetes</div>';
+        byId('panel-list').innerHTML = '<div class="text-sm error">Error cargando partes</div>';
+      }
+    }
+
+    function packageInfoText(){
+      // default_text из packages_title.meta + словарь из packages_text_by_package.meta
+      const def = uiMeta('packages_title').default_text || byId('packages-desc')?.textContent || '';
+      const dict = uiMeta('packages_text_by_package') || {};
+      const key = norm(state.selectedPackage);
+      if (key && dict && typeof dict === 'object'){
+        // ищем по ключам basico/avanzado/maximo
+        if (dict[key]) return String(dict[key]);
+      }
+      return String(def || '');
+    }
+
+    function updatePackagesInfoUI(){
+      const el = byId('packages-desc');
+      if (!el) return;
+      el.textContent = packageInfoText();
+    }
+
+    function renderPackages(list){
+      const wrap = byId('packages-buttons');
+      if (!list || !list.length){
+        wrap.innerHTML = '<div class="text-sm text-slate-300">No hay paquetes configurados.</div>';
+        return;
+      }
+      wrap.innerHTML = list.map(p => {
+        const name = escapeHtml(p.name);
+        const selected = state.selectedPackage === p.name;
+        return `
+          <button type="button"
+            class="row rounded-2xl px-4 py-3 text-center font-extrabold ${selected ? 'selected' : ''}"
+            data-package="${escapeHtml(p.name)}"
+            aria-pressed="${selected ? 'true' : 'false'}">
+            ${name}
+          </button>
+        `;
+      }).join('');
+
+      wrap.onclick = (e) => {
+        const btn = e.target.closest('[data-package]');
+        if (!btn) return;
+        const pkg = btn.getAttribute('data-package') || '';
+        state.selectedPackage = pkg;
+        updatePackagesInfoUI();
+        updatePartialWarningUI();
+        updateStep3Buttons();
+        saveProgress();
+        renderPackages(list);
+      };
+
+      // обновляем подпись сразу
+      updatePackagesInfoUI();
+    }
+
+    // ----------------- VALIDATION STEP 1 -----------------
+    function labelForMissing(key, fallback){
+      return stripStar(uiLabel(key, fallback));
+    }
+
+    function step1MissingFields(){
+      const miss = [];
+      if (!byId('brand').value) miss.push(labelForMissing('brand', 'Marca'));
+      if (!byId('model').value) miss.push(labelForMissing('model', 'Modelo'));
+      if (!byId('year').value) miss.push(labelForMissing('year', 'Año'));
+      return miss;
+    }
+
+    function updateStep1UI(){
+      const miss = step1MissingFields();
+      byId('next-1').disabled = miss.length > 0;
+      byId('step1-hint').textContent = miss.length ? ('Falta completar: ' + miss.join(', ') + '.') : '';
+      saveProgress();
+    }
+
+    // ----------------- FLOW STEP 2 (with reset confirm) -----------------
+    function hasSelections(){
+      return !!state.selectedPackage ||
+             state.selectedParts.size > 0 ||
+             state.selectedExtras.size > 0 ||
+             state.selectedServicios.size > 0 ||
+             !!state.finish_key;
+    }
+
+    function resetSelections(){
+      state.selectedPackage = '';
+      state.selectedParts.clear();
+      state.selectedExtras.clear();
+      state.selectedServicios.clear();
+      state.finish_key = '';
+      state.finish_title = '';
+      state.finish_allow_partial = true;
+      state.finish_warning_partial = '';
+      byId('finish').value = '';
+      byId('finish_parts').value = '';
+      updatePackagesInfoUI();
+      updatePartialWarningUI();
+      updateStep3Buttons();
+    }
+
+    function setFlow(flow){
+      if (state.flow && state.flow !== flow && hasSelections()){
+        const ok = confirm('Cambiar el tipo reseteará tu selección. ¿Continuar?');
+        if (!ok) return;
+        resetSelections();
+      }
+
+      state.flow = flow;
+
+      const cards = { total: byId('card-total'), custom: byId('card-custom'), otros: byId('card-otros') };
+      const dots  = { total: byId('dot-total'),  custom: byId('dot-custom'),  otros: byId('dot-otros') };
+
+      ['total','custom','otros'].forEach(k=>{
+        cards[k].classList.toggle('active', k===flow);
+        cards[k].setAttribute('aria-pressed', k===flow ? 'true' : 'false');
+        dots[k].style.background = (k===flow) ? '#f5bf00' : 'transparent';
+      });
+
+      byId('next-2').disabled = !flow;
+      byId('step2-hint').textContent = flow ? '' : 'Selecciona una opción.';
+      saveProgress();
+
+      trackEvent('flow_selected', { flow });
+    }
+
+    // ----------------- FINISH -----------------
+    function setFinishFromKey(k){
+      state.finish_key = k || '';
+      const row = appData.finishes.get(state.finish_key);
+      state.finish_title = row?.title || '';
+      state.finish_allow_partial = (row?.allow_partial !== false);
+      state.finish_warning_partial = row?.warning_partial || '';
+    }
+
+    function isPartialContext(){
+      if (state.flow === 'custom') return true;
+      if (state.flow === 'otros') return true;
+      if (state.flow === 'total'){
+        const p = norm(state.selectedPackage);
+        if (p === 'basico' || p === 'avanzado') return true;
+      }
+      return false;
+    }
+
+    function getWarningTextForContext(){
+      if (state.finish_allow_partial === false){
+        const base = (state.finish_warning_partial || '').trim();
+        if (base) return base;
+
+        return 'La protección parcial con película mate o de color solo es posible si el vehículo tiene pintura mate de fábrica. ' +
+               'En otros casos, recomendamos película brillante o protección total. Este punto se revisa siempre durante la consulta final.';
+      }
+      return '';
+    }
+
+    function updatePartialWarningUI(){
+      const needWarn = isPartialContext() && (state.finish_allow_partial === false) && !!state.finish_key;
+      const txt = getWarningTextForContext();
+
+      const packBox = byId('pack-warning-box');
+      const partsBox = byId('parts-warning-box');
+
+      if (state.flow === 'total' && needWarn){
+        byId('pack-warning-body').textContent = txt;
+        packBox.classList.remove('hidden');
+      } else {
+        packBox.classList.add('hidden');
+        byId('pack-warning-body').textContent = '';
+      }
+
+      if (state.flow === 'custom' && needWarn){
+        byId('parts-warning-body').textContent = txt;
+        partsBox.classList.remove('hidden');
+      } else {
+        partsBox.classList.add('hidden');
+        byId('parts-warning-body').textContent = '';
+      }
+    }
+
+    // ----------------- STEP 3 -----------------
+    function enterStep3(){
+      byId('step3-hint').textContent = '';
+
+      if (state.flow === 'total'){
+        byId('step3-title').textContent = uiLabel('step3a_title', '3) Paquetes');
+        byId('block-packages').classList.remove('hidden');
+        byId('block-parts').classList.add('hidden');
+        byId('step3-nav').classList.remove('hidden');
+      } else if (state.flow === 'custom'){
+        byId('step3-title').textContent = uiLabel('step3b_title', '3) Partes');
+        byId('block-packages').classList.add('hidden');
+        byId('block-parts').classList.remove('hidden');
+        byId('step3-nav').classList.add('hidden');
+        renderPartsTab('frontal');
+      } else if (state.flow === 'otros'){
+        state.step4BackTarget = 2;
+        showStep(4);
+        return;
+      }
+
+      updatePackagesInfoUI();
+      updatePartialWarningUI();
+      updateStep3Buttons();
+    }
+
+    function updateStep3Buttons(){
+      const canPackages = !!state.selectedPackage && !!state.finish_key;
+      byId('next-3').disabled = !(state.flow === 'total' && canPackages);
+
+      const canParts = (state.selectedParts.size > 0) && !!state.finish_key;
+      byId('next-3b').disabled = !(state.flow === 'custom' && canParts);
+
+      updateViewButtonCount();
+      saveProgress();
+    }
+
+    // ----------------- PARTS -----------------
+    const partsUI = { activeTab: 'frontal' };
+
+    function rowTemplatePrice(item, selected){
+      const name = escapeHtml(item.name || '');
+      const id = escapeHtml(item.price_id);
+      return `
+        <button class="row w-full rounded-2xl px-4 py-3 flex items-start gap-3 text-left ${selected ? 'selected':''}"
+          type="button"
+          data-id="${id}"
+          aria-pressed="${selected ? 'true':'false'}">
+          <div class="check mt-0.5" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path d="M20 6L9 17l-5-5" stroke="#111" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="flex-1">
+            <div class="font-semibold text-[15px] leading-snug">${name}</div>
+          </div>
+        </button>
+      `;
+    }
+
+    function renderPartsTab(tab){
+      const panel = byId('panel-list');
+      const cat = appData.partsCatalog;
+      const list = cat[tab] || [];
+      partsUI.activeTab = tab;
+
+      ['frontal','lateral','trasera'].forEach(t=>{
+        const btn = byId(`tab-${t}`);
+        btn.classList.toggle('active', t===tab);
+        btn.setAttribute('aria-selected', t===tab ? 'true' : 'false');
+      });
+
+      if (!list.length){
+        panel.innerHTML = `<div class="text-sm text-slate-300">No hay opciones en esta sección.</div>`;
+        return;
+      }
+
+      panel.innerHTML = list.map(it=>{
+        const id = String(it.price_id);
+        const selected = state.selectedParts.has(id);
+        return rowTemplatePrice(it, selected);
+      }).join('');
+
+      updateViewButtonCount();
+    }
+
+    byId('panel-list').addEventListener('click', (e)=>{
+      const btn = e.target.closest('[data-id]');
+      if (!btn) return;
+      const id = String(btn.getAttribute('data-id') || '');
+      if (!id) return;
+
+      if (state.selectedParts.has(id)) state.selectedParts.delete(id);
+      else state.selectedParts.add(id);
+
+      renderPartsTab(partsUI.activeTab);
+      updateStep3Buttons();
+      if (byId('sheet').classList.contains('open')) renderSheet();
+    });
+
+    function updateViewButtonCount(){
+      const n = state.selectedParts.size;
+      const tpl = uiLabel('btn_view_selection_template', 'Ver mi selección ({count})');
+      byId('btn-view').textContent = String(tpl).replace('{count}', String(n));
+      byId('btn-view').disabled = (n === 0);
+    }
+
+    // ----------------- SHEET -----------------
+    function openSheet(){
+      byId('backdrop').classList.add('open');
+      byId('sheet').classList.add('open');
+      byId('backdrop').setAttribute('aria-hidden','false');
+      renderSheet();
+    }
+    function closeSheet(){
+      byId('sheet').classList.remove('open');
+      byId('backdrop').classList.remove('open');
+      byId('backdrop').setAttribute('aria-hidden','true');
+    }
+
+    function renderSheet(){
+      const listEl = byId('sheet-list');
+      const cat = appData.partsCatalog;
+      const all = [...cat.frontal, ...cat.lateral, ...cat.trasera];
+
+      const items = all
+        .filter(it => state.selectedParts.has(String(it.price_id)))
+        .sort((a,b)=> (a.sort_order??0)-(b.sort_order??0));
+
+      if (!items.length){
+        const empty = uiLabel('sheet_empty_text', 'No has seleccionado nada todavía.');
+        listEl.innerHTML = `<div class="text-sm text-slate-300">${escapeHtml(empty)}</div>`;
+        return;
+      }
+
+      const removeText = uiLabel('sheet_btn_remove', 'Quitar');
+
+      listEl.innerHTML = items.map(it=>{
+        const id = escapeHtml(String(it.price_id));
+        const nm = escapeHtml(it.name);
+        return `
+          <div class="row rounded-2xl px-4 py-3 flex items-center gap-3">
+            <div class="check" style="background:#f5bf00;border-color:#f5bf00;">
+              <svg style="display:block" width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <path d="M20 6L9 17l-5-5" stroke="#111" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div class="flex-1">
+              <div class="font-semibold text-[15px] leading-snug">${nm}</div>
+            </div>
+            <button class="btn-ghost" style="padding:.45rem .9rem" data-remove="${id}" type="button">${escapeHtml(removeText)}</button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    byId('sheet-list').addEventListener('click', (e)=>{
+      const btn = e.target.closest('[data-remove]');
+      if (!btn) return;
+      const id = String(btn.getAttribute('data-remove') || '');
+      if (!id) return;
+      state.selectedParts.delete(id);
+      renderPartsTab(partsUI.activeTab);
+      updateStep3Buttons();
+      renderSheet();
+    });
+
+    // ----------------- STEP 4 -----------------
+    function renderStep4List(tab){
+      byId('tab-step4-extras').classList.toggle('active', tab==='extras');
+      byId('tab-step4-extras').setAttribute('aria-selected', tab==='extras' ? 'true' : 'false');
+      byId('tab-step4-servicios').classList.toggle('active', tab==='servicios');
+      byId('tab-step4-servicios').setAttribute('aria-selected', tab==='servicios' ? 'true' : 'false');
+
+      const listEl = byId('step4-list');
+      const list = (tab === 'extras') ? (appData.extrasList||[]) : (appData.serviciosList||[]);
+      const selectedSet = (tab === 'extras') ? state.selectedExtras : state.selectedServicios;
+
+      listEl.setAttribute('data-step4-tab', tab);
+
+      if (!list.length){
+        listEl.innerHTML = `<div class="text-sm text-slate-300">No hay opciones configuradas.</div>`;
+        updateStep4Count();
+        return;
+      }
+
+      listEl.innerHTML = list.map(it=>{
+        const id = String(it.price_id);
+        const selected = selectedSet.has(id);
+        return rowTemplatePrice({ price_id:id, name:it.name }, selected);
+      }).join('');
+
+      updateStep4Count();
+      saveProgress();
+    }
+
+    function updateStep4Count(){
+      const count = state.selectedExtras.size + state.selectedServicios.size;
+      const none = uiLabel('step4_none_selected', 'Ninguno seleccionado');
+      byId('step4-count').textContent = count > 0 ? `Seleccionados: ${count}` : none;
+    }
+
+    byId('step4-list').addEventListener('click', (e)=>{
+      const btn = e.target.closest('[data-id]');
+      if (!btn) return;
+      const id = String(btn.getAttribute('data-id')||'');
+      if (!id) return;
+
+      const tab = byId('step4-list').getAttribute('data-step4-tab') || 'extras';
+      if (tab === 'extras'){
+        if (state.selectedExtras.has(id)) state.selectedExtras.delete(id);
+        else state.selectedExtras.add(id);
+      } else {
+        if (state.selectedServicios.has(id)) state.selectedServicios.delete(id);
+        else state.selectedServicios.add(id);
+      }
+      renderStep4List(tab);
+    });
+
+    // ----------------- STEP 5: send channel UI -----------------
+    function setSendChannel(ch){
+      state.send_channel = (ch === 'whatsapp') ? 'whatsapp' : 'email';
+      byId('send-tab-wa').classList.toggle('active', state.send_channel === 'whatsapp');
+      byId('send-tab-wa').setAttribute('aria-selected', state.send_channel === 'whatsapp' ? 'true' : 'false');
+      byId('send-tab-email').classList.toggle('active', state.send_channel === 'email');
+      byId('send-tab-email').setAttribute('aria-selected', state.send_channel === 'email' ? 'true' : 'false');
+      saveProgress();
+    }
+
+    // ----------------- Inline validation -----------------
+    function emailValid(v){
+      const s = String(v||'').trim().toLowerCase();
+      const re = /^[a-z0-9._-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
+      if (s.includes('..')) return false;
+      return re.test(s);
+    }
+
+    function phoneValidES(v){
+      const raw = String(v||'').trim();
+      const digits = raw.replace(/[^\d]/g,'');
+      let d = digits;
+      if (d.startsWith('34') && d.length >= 11) d = d.slice(2);
+      if (d.length !== 9) return false;
+      const first = d.charAt(0);
+      return first === '6' || first === '7' || first === '9';
+    }
+
+    function markField(el, ok){
+      if (!el) return;
+      el.classList.toggle('invalid', !ok);
+      el.classList.toggle('valid', ok);
+    }
+
+    function setFieldHint(id, text){
+      const el = byId(id);
+      if (!el) return;
+      if (!text){
+        el.classList.add('hidden');
+        el.textContent = '';
+      } else {
+        el.classList.remove('hidden');
+        el.textContent = text;
+      }
+    }
+
+    function validateName(){
+      const el = byId('name_client');
+      const v = (el.value||'').trim();
+      const ok = v.length >= 2;
+      markField(el, ok);
+      setFieldHint('name-hint', ok ? '' : 'Escribe tu nombre (mínimo 2 caracteres).');
+      return ok;
+    }
+
+    function validatePhone(){
+      const el = byId('phone');
+      const v = (el.value||'').trim();
+      const ok = phoneValidES(v);
+      markField(el, ok);
+      setFieldHint('phone-hint', ok ? '' : 'Teléfono inválido (España: 9 dígitos, empieza por 6/7/9).');
+      return ok;
+    }
+
+    function validateEmail(){
+      const el = byId('email_client');
+      const v = (el.value||'').trim();
+      const ok = emailValid(v);
+      markField(el, ok);
+      setFieldHint('email-hint', ok ? '' : 'Email inválido.');
+      return ok;
+    }
+
+    function validateConsent(){
+      const checked = byId('consent')?.checked;
+      if (!checked){
+        setFieldHint('consent-hint', 'Debes aceptar la política de privacidad para continuar.');
+        return false;
+      }
+      setFieldHint('consent-hint', '');
+      return true;
+    }
+
+    function step5Valid(){
+      return validateName() && validatePhone() && validateEmail() && validateConsent();
+    }
+
+    function formatPhoneES(raw){
+      let v = raw.replace(/[^\d]/g, '');
+      if (v.startsWith('34') && v.length > 9) v = v.slice(2);
+      let formatted = '';
+      if (v.length >= 1) formatted = v.slice(0,3);
+      if (v.length >= 4) formatted += ' ' + v.slice(3,5);
+      if (v.length >= 6) formatted += ' ' + v.slice(5,7);
+      if (v.length >= 8) formatted += ' ' + v.slice(7,9);
+      return formatted.slice(0,12);
+    }
+
+    // ----------------- Payload -----------------
     function collectPayload(){
-      const basic = byId('basic')?.value || '';
-      const partial = Array.from(document.querySelectorAll('.partial-item:checked')).map(i=>i.value);
+      const cat = appData.partsCatalog;
+      const allParts = [...cat.frontal, ...cat.lateral, ...cat.trasera];
+
+      const idToName = new Map(allParts.map(x=>[String(x.price_id), x.name]));
+      const extrasNames = (appData.extrasList||[]).reduce((m,x)=> (m.set(String(x.price_id), x.name), m), new Map());
+      const servNames   = (appData.serviciosList||[]).reduce((m,x)=> (m.set(String(x.price_id), x.name), m), new Map());
+
+      const selectedPartsNames = [...state.selectedParts].map(id=>idToName.get(String(id))).filter(Boolean);
+      const selectedExtrasNames = [...state.selectedExtras].map(id=>extrasNames.get(String(id))).filter(Boolean);
+      const selectedServiciosNames = [...state.selectedServicios].map(id=>servNames.get(String(id))).filter(Boolean);
+
+      const servicePartialAll = [...selectedPartsNames, ...selectedExtrasNames, ...selectedServiciosNames];
+
+      const consentAt = new Date().toISOString();
+
       return {
-        name_client: byId('name_client')?.value?.trim() || '',
-        email_client: byId('email_client')?.value?.trim() || '',
-        phone: byId('phone')?.value?.trim() || '',
-        marca: byId('brand')?.value || '',
-        modelo: byId('model')?.value || '',
-        año: byId('year')?.value || '',
-        service_basic: basic,
-        service_partial: partial.join(', '),
-        marca_ppf: byId('ppf')?.value || '',
+        name_client: (byId('name_client')?.value || '').trim(),
+        email_client: (byId('email_client')?.value || '').trim(),
+        phone: (byId('phone')?.value || '').trim(),
+
+        marca: state.brand || byId('brand').value || '',
+        modelo: state.model || byId('model').value || '',
+        año: state.year || byId('year').value || '',
+
+        install_center_id: state.install_center_id,
+        install_center: state.install_center_title,
+
+        service_basic: state.flow === 'total' ? (state.selectedPackage || '') : '',
+        service_partial: servicePartialAll.join(', '),
+
+        marca_ppf: state.finish_key || state.finish_title,
+        finish_key: state.finish_key,
+        finish_title: state.finish_title,
+
+        flow: state.flow,
         check_promotion: byId('promo')?.checked ? 'Checked' : '',
-        mode: 'text'
+        comment: (byId('comment')?.value || '').trim(),
+
+        mode: 'text',
+        send_channel: state.send_channel,
+
+        consent_at: consentAt,
+        consent_policy_url: PRIVACY_URL
       };
     }
 
-    // <<< НОВОЕ: очистка формы после отправки >>>
-    function resetForm(){
-      byId('brand').value = '';
-      byId('model').innerHTML = '<option value="">Modelo</option>';
-      byId('model').disabled = false;
-      byId('year').selectedIndex = 0;
-      byId('ppf').selectedIndex = 0;
-      byId('basic').selectedIndex = 0;
-      document.querySelectorAll('.partial-item').forEach(cb => cb.checked = false);
-      ['name_client','email_client','phone'].forEach(id => byId(id).value = '');
-      byId('promo').checked = false;
-      // сообщение очистим чуть позже, чтобы пользователь увидел "успех"
-    }
-
-    // <<< ИЗМЕНЕНО: отправка без preflight + очистка формы >>>
-    async function submitForm(){
-      setMsg('', true);
-      const btn = byId('submit');
-      btn.disabled = true;
+    // ----------------- Webhook POST (CORS + timeout) -----------------
+    async function postToWebhook(payload, { silent = false } = {}){
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
 
       try{
-        const payload = collectPayload();
-
-        // Мини-валидация
-        if (!payload.marca || !payload.modelo || !payload.año || !payload.marca_ppf ||
-            !payload.name_client || !payload.email_client || !payload.phone){
-          throw new Error('Por favor, rellena los campos obligatorios marcados con *');
-        }
-
-        // ВАЖНО: без preflight -> no-cors + text/plain
-        await fetch(WEBHOOK_URL, {
+        const res = await fetch(WEBHOOK_URL, {
           method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-          body: JSON.stringify({ data: payload })
+          mode: 'cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data: payload }),
+          signal: controller.signal
         });
 
-        // Если до сюда дошли — запрос ушёл (ответ «opaque», но это ок).
-        setMsg('¡Formulario enviado con éxito!');
-        resetForm();
-      } catch (e){
+        if (!res.ok){
+          const txt = await res.text().catch(()=> '');
+          throw new Error(txt ? `Server error: ${txt}` : `Server error: ${res.status}`);
+        }
+
+        try { await res.json(); } catch(e){}
+      } catch(e){
+        if (e && e.name === 'AbortError'){
+          throw new Error('Tiempo de espera agotado. Inténtalo de nuevo.');
+        }
+        throw e;
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    }
+
+    // =========================================================
+    // ✅ NEW: Reset whole form after successful submit
+    // =========================================================
+    function resetFormAfterSuccess(){
+      // Reset state
+      state.flow = '';
+      state.brand = '';
+      state.model = '';
+      state.year = '';
+
+      state.install_center_id = '';
+      state.install_center_title = '';
+
+      state.finish_key = '';
+      state.finish_title = '';
+      state.finish_allow_partial = true;
+      state.finish_warning_partial = '';
+
+      state.selectedPackage = '';
+      state.selectedParts.clear();
+      state.selectedExtras.clear();
+      state.selectedServicios.clear();
+
+      state.send_channel = 'email';
+      state.step4BackTarget = 3;
+      state.startedAt = Date.now();
+
+      // Reset UI fields
+      byId('brand').value = '';
+      byId('model').innerHTML = '<option value="">Selecciona una marca</option>';
+      byId('model').disabled = true;
+      byId('year').value = '';
+
+      byId('finish').value = '';
+      byId('finish_parts').value = '';
+
+      byId('install_center').value = '';
+      byId('name_client').value = '';
+      byId('phone').value = '';
+      byId('email_client').value = '';
+      byId('comment').value = '';
+
+      byId('consent').checked = false;
+      byId('promo').checked = false;
+
+      // Reset validation visuals
+      ['name_client','phone','email_client'].forEach(id=>{
+        const el = byId(id);
+        el.classList.remove('invalid','valid');
+      });
+      ['name-hint','phone-hint','email-hint','consent-hint'].forEach(id=>{
+        const el = byId(id);
+        if (el){ el.classList.add('hidden'); el.textContent=''; }
+      });
+
+      // Reset warnings + sheet
+      byId('pack-warning-box').classList.add('hidden');
+      byId('parts-warning-box').classList.add('hidden');
+      byId('pack-warning-body').textContent = '';
+      byId('parts-warning-body').textContent = '';
+      closeSheet();
+
+      // Reset buttons/texts
+      setFlow('');              // clears flow UI & next-2
+      setSendChannel('email');  // Email by default (UI + state)
+      updateStep1UI();
+      updateStep3Buttons();
+      renderStep4List('extras');
+
+      // Return to step 1
+      showStep(1);
+    }
+
+    // ----------------- Submit protections + fallback queue -----------------
+    async function submitForm(){
+      setMsg('');
+
+      const now = Date.now();
+      if (now - state.lastSubmitAt < 3000){
+        setMsg('Por favor espera un momento antes de reenviar.', false);
+        return;
+      }
+      state.lastSubmitAt = now;
+
+      if (state.submitting) return;
+      state.submitting = true;
+
+      const btn = byId('submit');
+      const submitText = byId('submit-text');
+      const submitSpinner = byId('submit-spinner');
+
+      btn.disabled = true;
+      submitText.classList.add('hidden');
+      submitSpinner.classList.remove('hidden');
+
+      try{
+        if (!step5Valid()) {
+          throw new Error('Por favor completa todos los campos obligatorios correctamente.');
+        }
+
+        const miss = step1MissingFields();
+        if (miss.length) throw new Error('Faltan datos del coche: ' + miss.join(', ') + '.');
+
+        const payload = collectPayload();
+
+        try{
+          await postToWebhook(payload);
+
+          setMsg('¡Enviado! Te contactaremos lo antes posible. 🎉', true);
+
+          trackEvent('form_submitted_success', {
+            flow: state.flow,
+            send_channel: state.send_channel,
+            time_to_complete: Math.round((Date.now() - state.startedAt) / 1000)
+          });
+
+          if (window.fbq){
+            fbq('track', 'Lead', {
+              content_name: state.flow,
+              value: 1,
+              currency: 'EUR'
+            });
+          }
+
+          clearProgress();
+
+          // ✅ IMPORTANT: reset everything after success
+          resetFormAfterSuccess();
+
+        } catch(e){
+          enqueuePending(payload);
+          setMsg('No hemos podido enviar ahora. Guardamos tu solicitud y la reintentaremos automáticamente.', false);
+          console.error('submit -> queued:', e);
+
+          trackEvent('form_submit_failed_queued', {
+            flow: state.flow,
+            error: e.message
+          });
+        }
+      } catch(e){
         console.error('submit:', e);
         setMsg('Error: ' + (e?.message || e), false);
-      } finally{
+
+        trackEvent('form_submit_validation_error', {
+          flow: state.flow,
+          error: e.message
+        });
+      } finally {
         btn.disabled = false;
+        submitText.classList.remove('hidden');
+        submitSpinner.classList.add('hidden');
+        state.submitting = false;
       }
     }
 
-    // Инициализация
-    async function init(){
-      await Promise.all([loadBrands(), loadFilmTypes(), loadBasicOptions(), loadPartialGrouped()]);
-      byId('brand')?.addEventListener('change', (e)=> loadModels(e.target.value || ''));
-      byId('submit')?.addEventListener('click', submitForm);
+    // ----------------- Keyboard navigation -----------------
+    function initKeyboardNav(){
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && byId('sheet').classList.contains('open')){
+          closeSheet();
+          e.preventDefault();
+        }
+
+        if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') &&
+            e.target.closest('[role="tablist"]')){
+          const tablist = e.target.closest('[role="tablist"]');
+          const tabs = [...tablist.querySelectorAll('button[role="tab"]')];
+          const idx = tabs.indexOf(e.target);
+          if (idx === -1) return;
+
+          const next = e.key === 'ArrowRight'
+            ? tabs[(idx + 1) % tabs.length]
+            : tabs[(idx - 1 + tabs.length) % tabs.length];
+
+          next.focus();
+          next.click();
+          e.preventDefault();
+        }
+      });
     }
+
+    // ----------------- INIT -----------------
+    async function init(){
+      trackEvent('form_page_view', {
+        referrer: document.referrer || 'direct'
+      });
+
+      flushPending().catch(()=>{});
+
+      const restored = restoreProgressIfAny();
+
+      await Promise.all([
+        loadUIFields(),        // <-- ВАЖНО: form_ui больше не используется
+        loadBrands(),
+        loadModels(''),
+        loadYears(),
+        loadInstallCenters(),
+        loadFinishes()
+      ]);
+
+      await loadPriceUI();
+
+      // после загрузки ui_form_fields можно еще раз применить (на случай позднего ответа)
+      // (без побочных эффектов)
+      if (ui.ready) applyUI();
+
+      if (restored){
+        if (state.brand){
+          byId('brand').value = state.brand;
+          await loadModels(state.brand);
+        }
+        if (state.model) byId('model').value = state.model;
+        if (state.year) byId('year').value = state.year;
+
+        if (state.finish_key){
+          byId('finish').value = state.finish_key;
+          byId('finish_parts').value = state.finish_key;
+          setFinishFromKey(state.finish_key);
+        }
+
+        updatePackagesInfoUI();
+        updatePartialWarningUI();
+        updateStep3Buttons();
+      }
+
+      // Step1 listeners
+      byId('brand').addEventListener('change', async (e)=>{
+        state.brand = e.target.value || '';
+        state.model = '';
+        byId('model').value = '';
+        await loadModels(state.brand);
+        updateStep1UI();
+      });
+
+      byId('model').addEventListener('change', (e)=>{ state.model = e.target.value || ''; updateStep1UI(); });
+      byId('year').addEventListener('change', (e)=>{ state.year = e.target.value || ''; updateStep1UI(); });
+
+      byId('install_center').addEventListener('change', (e)=>{
+        state.install_center_id = e.target.value || '';
+        const r = appData.centers.get(String(state.install_center_id));
+        state.install_center_title = r?.title || '';
+        saveProgress();
+      });
+
+      updateStep1UI();
+
+      // Nav step1
+      byId('next-1').addEventListener('click', ()=>{
+        const miss = step1MissingFields();
+        if (miss.length){
+          byId('step1-hint').textContent = 'Falta completar: ' + miss.join(', ') + '.';
+          return;
+        }
+        byId('step1-hint').textContent = '';
+        showStep(2);
+      });
+
+      // Flow
+      byId('card-total').addEventListener('click', ()=> setFlow('total'));
+      byId('card-custom').addEventListener('click', ()=> setFlow('custom'));
+      byId('card-otros').addEventListener('click', ()=> setFlow('otros'));
+
+      byId('back-2').addEventListener('click', ()=> showStep(1));
+      byId('next-2').addEventListener('click', ()=>{
+        if (!state.flow){
+          byId('step2-hint').textContent = 'Selecciona una opción.';
+          return;
+        }
+        byId('step2-hint').textContent = '';
+        showStep(3);
+        enterStep3();
+      });
+
+      function syncFinish(sourceId){
+        const val = byId(sourceId).value || '';
+        setFinishFromKey(val);
+        ['finish','finish_parts'].forEach(id => {
+          if (id !== sourceId) byId(id).value = val;
+        });
+        updatePartialWarningUI();
+        updateStep3Buttons();
+      }
+
+      byId('finish').addEventListener('change', ()=> syncFinish('finish'));
+      byId('finish_parts').addEventListener('change', ()=> syncFinish('finish_parts'));
+
+      // Step 3 nav (packages)
+      byId('back-3').addEventListener('click', ()=> showStep(2));
+      byId('next-3').addEventListener('click', ()=>{
+        if (!state.selectedPackage) { byId('step3-hint').textContent = 'Selecciona un paquete.'; return; }
+        if (!state.finish_key) { byId('step3-hint').textContent = 'Selecciona el tipo de cobertura.'; return; }
+        byId('step3-hint').textContent = '';
+        state.step4BackTarget = 3;
+        showStep(4);
+      });
+
+      // Step 3B parts nav
+      byId('back-3b').addEventListener('click', ()=> showStep(2));
+      byId('next-3b').addEventListener('click', ()=>{
+        if (!state.finish_key) { byId('step3-hint').textContent = 'Selecciona el tipo de cobertura.'; return; }
+        if (state.selectedParts.size === 0) { byId('step3-hint').textContent = 'Selecciona al menos una parte.'; return; }
+        byId('step3-hint').textContent = '';
+        state.step4BackTarget = 3;
+        showStep(4);
+      });
+
+      // Parts tabs
+      byId('tab-frontal').addEventListener('click', ()=> renderPartsTab('frontal'));
+      byId('tab-lateral').addEventListener('click', ()=> renderPartsTab('lateral'));
+      byId('tab-trasera').addEventListener('click', ()=> renderPartsTab('trasera'));
+
+      // Sheet
+      byId('btn-view').addEventListener('click', openSheet);
+      byId('btn-close').addEventListener('click', closeSheet);
+      byId('backdrop').addEventListener('click', closeSheet);
+
+      // Step 4
+      byId('tab-step4-extras').addEventListener('click', ()=> renderStep4List('extras'));
+      byId('tab-step4-servicios').addEventListener('click', ()=> renderStep4List('servicios'));
+
+      byId('back-4').addEventListener('click', ()=>{
+        const target = state.step4BackTarget || 3;
+        if (target === 2){
+          showStep(2);
+          return;
+        }
+        showStep(3);
+        enterStep3();
+      });
+
+      byId('next-4').addEventListener('click', ()=> showStep(5));
+
+      // Step 5
+      byId('back-5').addEventListener('click', ()=> showStep(4));
+
+      // send channel tabs
+      byId('send-tab-wa').addEventListener('click', ()=> setSendChannel('whatsapp'));
+      byId('send-tab-email').addEventListener('click', ()=> setSendChannel('email'));
+      setSendChannel(state.send_channel);
+
+      // Inline validation listeners
+      byId('name_client').addEventListener('blur', validateName);
+      byId('phone').addEventListener('blur', validatePhone);
+      byId('email_client').addEventListener('blur', validateEmail);
+      byId('consent').addEventListener('change', validateConsent);
+
+      byId('name_client').addEventListener('input', ()=> {
+        if (!byId('name-hint').classList.contains('hidden')) validateName();
+      });
+
+      byId('phone').addEventListener('input', (e)=> {
+        e.target.value = formatPhoneES(e.target.value);
+        if (!byId('phone-hint').classList.contains('hidden')) validatePhone();
+      });
+
+      byId('email_client').addEventListener('input', ()=> {
+        if (!byId('email-hint').classList.contains('hidden')) validateEmail();
+      });
+
+      byId('submit').addEventListener('click', submitForm);
+
+      initKeyboardNav();
+
+      if (restored){
+        if (state.step === 3) enterStep3();
+        if (state.step === 4 && state.flow === 'otros') state.step4BackTarget = 2;
+        showStep(state.step || 1);
+        updatePackagesInfoUI();
+        updatePartialWarningUI();
+        updateStep3Buttons();
+      } else {
+        showStep(1);
+        setFlow('');
+        setFinishFromKey('');
+        updatePackagesInfoUI();
+        updatePartialWarningUI();
+        updateStep3Buttons();
+      }
+
+      // Step1 button label from UI
+      setText('next-1', uiLabel('btn_next_1', byId('next-1')?.textContent || 'Continuar'));
+    }
+
     document.addEventListener('DOMContentLoaded', init);
   </script>
-
-  <script>
-  // Скрипт для активации автозаполненных полей
-  window.addEventListener('load', () => {
-    document.querySelectorAll('input, textarea, select').forEach(el => {
-      if (el.value) {
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-        el.dispatchEvent(new Event('change', { bubbles: true }));
-      }
-    });
-  });
-</script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
