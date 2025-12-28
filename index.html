@@ -505,14 +505,34 @@
 
   <script>
     /// ========= CONFIGURATION =========
-    const SUPABASE_URL = "https://pxgjwdhwxtzizhgotqur.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4Z2p3ZGh3eHR6aXpoZ290cXVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMwMDc4MjAsImV4cCI6MjA2ODU4MzgyMH0.H-31tjjjcNAn7jpMutYZN6LLImqdsVvYoJWxhYtER84";
+    const SUPABASE_URL = "https://ewaslsgyssyxvicobvaw.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV3YXNsc2d5c3N5eHZpY29idmF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY5MDMzMzIsImV4cCI6MjA4MjQ3OTMzMn0.pACJsbed_r3hdpGa0_9Fn5HMu2O323pdXh57usXL6Uc";
     const WEBHOOK_URL = "https://primary-production-8e17.up.railway.app/webhook/9d3ac003-abf6-446b-a415-18ba2b4affb3";
     const PRIVACY_URL = "https://www.ppfbarcelona.es/pol%C3%ADtica-de-privacidad";
-    const FORM_KEY = "quote_v2";
+    const FORM_KEY = "ppf_quote";
     // =================================
 
-    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+    });
+
+    // Safety guard: never use SERVICE_ROLE_DO_NOT_USE_IN_BROWSER key in frontend
+    function jwtRole(token){
+      try{
+        const part = token.split('.')[1];
+        const json = JSON.parse(atob(part.replace(/-/g,'+').replace(/_/g,'/')));
+        return json && json.role ? String(json.role) : '';
+      } catch(e){ return ''; }
+    }
+    const _role = jwtRole(SUPABASE_ANON_KEY);
+    if (_role === 'SERVICE_ROLE_DO_NOT_USE_IN_BROWSER'){
+      console.error('SECURITY ERROR: SERVICE_ROLE_DO_NOT_USE_IN_BROWSER key detected. Replace with anon public key.');
+      const b = document.createElement('div');
+      b.className = 'max-w-3xl mx-auto px-5 py-3';
+      b.innerHTML = '<div class="warnbox"><div class="title">Configuración incorrecta</div><div class="text-sm">Estás usando <b>SERVICE_ROLE_DO_NOT_USE_IN_BROWSER</b> en el navegador. Sustituye SUPABASE_ANON_KEY por la <b>anon public key</b> del proyecto de catálogos.</div></div>';
+      document.body.prepend(b);
+    }
+
     const byId = (id) => document.getElementById(id);
 
     // Cache common DOM
@@ -752,10 +772,8 @@
     async function loadUIFields(){
       try{
         const { data } = await sb
-          .from('ui_form_fields')
-          .select('field_key,step,label,enabled,required,sort_order,meta')
-          .eq('form_key', FORM_KEY)
-          .eq('enabled', true)
+          .from('v_catalog_ui_form_fields')
+          .select('field_key,step,label_es,enabled,required,sort_order,meta')
           .order('sort_order', { ascending: true })
           .throwOnError();
 
@@ -898,19 +916,17 @@
     function placeholderText(key, fallback){
       const t = uiLabel(key, '');
       return (t && t.trim()) ? t.trim() : fallback;
-    }
-
-    async function loadBrands(){
+    }    async function loadBrands(){
       const el = byId('brand');
       el.disabled = true;
       el.innerHTML = '<option value="">Cargando marcas...</option>';
       try{
-        const { data } = await sb.from('car_marcas')
-          .select('marca')
-          .order('marca', { ascending:true })
+        const { data } = await sb.from('v_catalog_brands')
+          .select('brand')
+          .order('brand', { ascending:true })
           .throwOnError();
 
-        const brands = [...new Set((data||[]).map(r=>r.marca).filter(Boolean))];
+        const brands = [...new Set((data||[]).map(r=>r.brand).filter(Boolean))];
 
         const ph = placeholderText('brand_placeholder', 'Selecciona una marca');
         el.innerHTML =
@@ -922,9 +938,7 @@
       } finally {
         el.disabled = false;
       }
-    }
-
-    async function loadModels(brand){
+    }    async function loadModels(brand){
       const el = byId('model');
       el.disabled = true;
 
@@ -938,13 +952,13 @@
       el.innerHTML = '<option value="">Cargando modelos...</option>';
 
       try{
-        const { data } = await sb.from('car_marcas')
-          .select('modelo')
-          .eq('marca', brand)
-          .order('modelo', { ascending:true })
+        const { data } = await sb.from('v_catalog_models')
+          .select('model')
+          .eq('brand', brand)
+          .order('model', { ascending:true })
           .throwOnError();
 
-        const models = [...new Set((data||[]).map(r=>r.modelo).filter(Boolean))];
+        const models = [...new Set((data||[]).map(r=>r.model).filter(Boolean))];
         const ph = placeholderText('model_placeholder', 'Selecciona un modelo');
 
         el.innerHTML =
@@ -956,19 +970,17 @@
       } finally {
         el.disabled = false;
       }
-    }
-
-    async function loadYears(){
+    }    async function loadYears(){
       const el = byId('year');
       el.disabled = true;
       el.innerHTML = '<option value="">Cargando años...</option>';
       try{
-        const { data } = await sb.from('año_coefficients')
-          .select('año')
-          .order('año', { ascending:false })
+        const { data } = await sb.from('v_catalog_years')
+          .select('year')
+          .order('year', { ascending:false })
           .throwOnError();
 
-        const years = [...new Set((data||[]).map(r=>String(r.año)).filter(Boolean))];
+        const years = [...new Set((data||[]).map(r=>String(r.year)).filter(Boolean))];
         const ph = placeholderText('year_placeholder', 'Selecciona un año');
 
         el.innerHTML =
@@ -983,23 +995,32 @@
     }
 
     // ----------------- LOAD: install_centers -----------------
+
+
+    // ----------------- LOAD: install_centers -----------------
     async function loadInstallCenters(){
       const el = byId('install_center');
       el.disabled = true;
       el.innerHTML = '<option value="">Cargando centros...</option>';
       try{
-        const { data } = await sb.from('install_centers')
-          .select('id,title,enabled,sort_order')
-          .eq('enabled', true)
+        // Prefer VIEW: already filtered (enabled=true) + safe columns
+        const { data } = await sb
+          .from('v_catalog_install_centers')
+          .select('center_key,title_es,city')
           .order('sort_order', { ascending:true })
           .throwOnError();
 
-        const rows = (data||[]).filter(r=>r.id && r.title);
-        el.innerHTML =
-          '<option value="">Selecciona una opción</option>' +
-          rows.map(r=>`<option value="${escapeHtml(String(r.id))}">${escapeHtml(r.title)}</option>`).join('');
+        const rows = (data||[]).filter(r => r && r.center_key && r.title_es);
 
-        appData.centers = new Map(rows.map(r=>[String(r.id), r]));
+        const ph = placeholderText('center_placeholder', 'Selecciona una opción');
+        el.innerHTML =
+          `<option value="">${escapeHtml(ph)}</option>` +
+          rows.map(r => {
+            const label = r.city ? `${r.title_es} (${r.city})` : r.title_es;
+            return `<option value="${escapeHtml(String(r.center_key))}">${escapeHtml(String(label))}</option>`;
+          }).join('');
+
+        appData.centers = new Map(rows.map(r => [String(r.center_key), r]));
       } catch(e){
         console.error('loadInstallCenters:', e);
         el.innerHTML = '<option value="">Error al cargar centros.</option>';
@@ -1009,6 +1030,10 @@
     }
 
     // ----------------- LOAD: Finishes -----------------
+
+
+    // ----------------- LOAD: Finishes -----------------
+    
     async function loadFinishes(){
       const finishSel = byId('finish');
       const finishSelParts = byId('finish_parts');
@@ -1016,22 +1041,30 @@
       finishSelParts.innerHTML = '<option value="">Cargando opciones...</option>';
 
       try{
-        const { data } = await sb.from('film_finishes')
-          .select('finish_key,title,enabled,sort_order,allow_partial,warning_partial')
-          .eq('enabled', true)
+        const { data } = await sb.from('v_catalog_finishes')
+          .select('finish_key,title_es,allow_partial,warning_partial,sort_order,form_key')
+          .eq('form_key', FORM_KEY)
           .order('sort_order', { ascending:true })
           .throwOnError();
 
-        const rows = (data||[]).filter(r=>r.finish_key && r.title);
+        // IMPORTANT: some schemas use title_es, others use title. We normalize to .title
+        const rows = (data || [])
+          .map(r => ({
+            ...r,
+            title: String((r && (r.title_es || r.title)) || '').trim()
+          }))
+          .filter(r => r.finish_key && r.title);
+
+        const placeholder = placeholderText('finish_placeholder', 'Selecciona una opción');
 
         const options =
-          '<option value="" disabled selected>Selecciona una opción</option>' +
-          rows.map(r=>`<option value="${escapeHtml(r.finish_key)}">${escapeHtml(r.title)}</option>`).join('');
+          `<option value="" disabled selected>${escapeHtml(placeholder)}</option>` +
+          rows.map(r => `<option value="${escapeHtml(String(r.finish_key))}">${escapeHtml(String(r.title))}</option>`).join('');
 
         finishSel.innerHTML = options;
         finishSelParts.innerHTML = options;
 
-        appData.finishes = new Map(rows.map(r=>[r.finish_key, r]));
+        appData.finishes = new Map(rows.map(r => [String(r.finish_key), r]));
       } catch(e){
         console.error('loadFinishes:', e);
         finishSel.innerHTML = '<option value="">Error al cargar opciones.</option>';
@@ -1039,26 +1072,29 @@
       }
     }
 
+
+    // ----------------- LOAD: catalog_services (replaces price_ui + price join) -----------------
+
+
     // ----------------- LOAD: price_ui + price (join) -----------------
     async function loadPriceUI(){
       try{
-        const { data } = await sb.from('price_ui')
-          .select('price_id, enabled, sort_order, ui_step, ui_block, ui_group, ui_tab, price:price_id(service_name,type)')
-          .eq('enabled', true)
+        const { data } = await sb.from('v_catalog_services')
+          .select('service_key,title_es,service_type,sort_order,ui_step,ui_block,ui_group,ui_tab')
           .order('sort_order', { ascending:true })
           .throwOnError();
 
-        const rows = (data||[]).filter(r=>r.price && r.price.service_name);
+        const rows = (data||[]).filter(r=>r.service_key && r.title_es);
 
         const packages = rows
-          .filter(r => r.ui_step === 3 && r.ui_block === 'paquetes' && r.price.type === 'basic')
-          .map(r => ({ price_id: String(r.price_id), name: String(r.price.service_name), sort_order: r.sort_order }));
+          .filter(r => r.ui_step === 3 && r.ui_block === 'paquetes' && r.service_type === 'basic')
+          .map(r => ({ price_id: String(r.service_key), name: String(r.title_es), sort_order: r.sort_order }));
 
         renderPackages(packages);
 
         const parts = rows
-          .filter(r => r.ui_step === 3 && r.ui_block === 'partes' && r.price.type === 'partial')
-          .map(r => ({ price_id: String(r.price_id), name: String(r.price.service_name), group: r.ui_group, sort_order: r.sort_order }));
+          .filter(r => r.ui_step === 3 && r.ui_block === 'partes' && r.service_type === 'partial')
+          .map(r => ({ price_id: String(r.service_key), name: String(r.title_es), group: r.ui_group, sort_order: r.sort_order }));
 
         const partsCatalog = { frontal: [], lateral: [], trasera: [] };
         for (const p of parts){
@@ -1070,19 +1106,19 @@
         appData.partsCatalog = partsCatalog;
 
         const extras = rows
-          .filter(r => r.ui_step === 4 && r.ui_block === 'extras' && r.price.type === 'partial')
-          .map(r => ({ price_id: String(r.price_id), name: String(r.price.service_name), sort_order: r.sort_order }));
+          .filter(r => r.ui_step === 4 && r.ui_block === 'extras' && r.service_type === 'partial')
+          .map(r => ({ price_id: String(r.service_key), name: String(r.title_es), sort_order: r.sort_order }));
 
         const servicios = rows
-          .filter(r => r.ui_step === 4 && r.ui_block === 'servicios' && r.price.type === 'partial')
-          .map(r => ({ price_id: String(r.price_id), name: String(r.price.service_name), sort_order: r.sort_order }));
+          .filter(r => r.ui_step === 4 && r.ui_block === 'servicios' && r.service_type === 'partial')
+          .map(r => ({ price_id: String(r.service_key), name: String(r.title_es), sort_order: r.sort_order }));
 
         appData.extrasList = extras;
         appData.serviciosList = servicios;
 
         renderStep4List('extras');
       } catch(e){
-        console.error('price_ui load:', e);
+        console.error('catalog_services load:', e);
         byId('packages-buttons').innerHTML = '<div class="text-sm error">Error cargando paquetes</div>';
         byId('panel-list').innerHTML = '<div class="text-sm error">Error cargando partes</div>';
       }
@@ -1974,10 +2010,7 @@
       // try to flush queued leads (best effort)
       flushPending().then(()=>{}).catch(()=>{});
 
-      //initIntlTelInput().then(()=>{}).catch(()=>{});
-await Promise.all([ /* supabase loads */ ]);
-
-
+      // initIntlTelInput().then(()=>{}).catch(()=>{});
       await Promise.all([
         loadUIFields(),
         loadBrands(),
