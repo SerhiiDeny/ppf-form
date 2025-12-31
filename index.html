@@ -507,7 +507,7 @@
     /// ========= CONFIGURATION =========
     const SUPABASE_URL = "https://ewaslsgyssyxvicobvaw.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV3YXNsc2d5c3N5eHZpY29idmF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY5MDMzMzIsImV4cCI6MjA4MjQ3OTMzMn0.pACJsbed_r3hdpGa0_9Fn5HMu2O323pdXh57usXL6Uc";
-    const WEBHOOK_URL = "https://ppf-intake-worker.ppfbarna.workers.dev/lead";
+    const WEBHOOK_URL = "https://primary-production-8e17.up.railway.app/webhook/9d3ac003-abf6-446b-a415-18ba2b4affb3";
     const PRIVACY_URL = "https://www.ppfbarcelona.es/pol%C3%ADtica-de-privacidad";
     const FORM_KEY = "ppf_quote";
     // =================================
@@ -1779,7 +1779,6 @@
     }
 
     // ----------------- Webhook POST -----------------
-    // ----------------- Webhook POST -----------------
     async function postToWebhook(payload, { silent = false } = {}){
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
@@ -1788,11 +1787,12 @@
         const res = await fetch(WEBHOOK_URL, {
           method: 'POST',
           mode: 'cors',
-          headers: { 'Content-Type': 'application/json' },0
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ data: payload }),
           signal: controller.signal
         });
-         if (!res.ok){
+
+        if (!res.ok){
           const txt = await res.text().catch(()=> '');
           throw new Error(txt ? `Server error: ${txt}` : `Server error: ${res.status}`);
         }
@@ -2177,5 +2177,3 @@
   </script>
 </body>
 </html>
-
-
