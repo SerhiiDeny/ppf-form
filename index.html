@@ -1779,18 +1779,47 @@
     }
 
     // ----------------- Webhook POST -----------------
-    async function postToWebhook(payload, { silent = false } = {}){
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
+    async function postToWebhook(payload, { silent = false } = {}) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-      try{
-        const res = await fetch(WEBHOOK_URL, {
-          method: 'POST',
-          mode: 'cors',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ data: payload }),
-          signal: controller.signal
-        });
+  try {
+
+    // ================= DEBUG: BEFORE SEND (SAFE) =================
+    try {
+      const sp = String(payload?.service_partial ?? '');
+
+      const partsArray = Array.isArray(payload?.partial_services)
+        ? payload.partial_services
+        : [];
+
+      if (typeof console !== 'undefined' && console && typeof console.log === 'function') {
+        console.log('[PPF DEBUG] service_partial.length =', sp.length);
+        console.log('[PPF DEBUG] service_partial.head =', sp.slice(0, 120));
+        console.log('[PPF DEBUG] service_partial.tail =', sp.slice(-160));
+        console.log('[PPF DEBUG] partial_services.count =', partsArray.length);
+        console.log('[PPF DEBUG] payload.json.length =', JSON.stringify(payload).length);
+      }
+    } catch (e) {}
+    // =============================================================
+
+    const res = await fetch(WEBHOOK_URL, {
+      method: 'POST',
+      mode: 'cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: payload }),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+    return res;
+
+  } catch (err) {
+    clearTimeout(timeoutId);
+    throw err;
+  }
+}
+
 
         if (!res.ok){
           const txt = await res.text().catch(()=> '');
@@ -2177,3 +2206,4 @@
   </script>
 </body>
 </html>
+
