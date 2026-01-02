@@ -316,6 +316,16 @@
               <option value="">Cargando opciones...</option>
             </select>
 
+            <!-- NEW: film_brand (packages) -->
+            <div id="wrap-film-brand" class="space-y-2">
+              <label class="small block" for="film_brand">
+                <span id="lbl-film-brand">Marca de la película (opcional)</span>
+              </label>
+              <select id="film_brand" class="w-full field">
+                <option value="">Cargando marcas...</option>
+              </select>
+            </div>
+
             <div id="pack-warning-box" class="warnbox hidden space-y-2">
               <div class="title">⚠️ Importante</div>
               <div id="pack-warning-body" class="text-sm"></div>
@@ -352,6 +362,16 @@
             <select id="finish_parts" class="w-full field">
               <option value="">Cargando opciones...</option>
             </select>
+
+            <!-- NEW: film_brand (parts) -->
+            <div id="wrap-film-brand-parts" class="space-y-2">
+              <label class="small block" for="film_brand_parts">
+                <span id="lbl-film-brand-parts">Marca de la película (opcional)</span>
+              </label>
+              <select id="film_brand_parts" class="w-full field">
+                <option value="">Cargando marcas...</option>
+              </select>
+            </div>
 
             <div id="parts-warning-box" class="warnbox hidden space-y-2">
               <div class="title">⚠️ Importante</div>
@@ -657,6 +677,24 @@
       return `${before}<span class="accent">${mid}</span>${after}`;
     }
 
+    function applyFilmBrandVisibility(){
+      const enabled = uiEnabled('film_brand', true);
+
+      const w1 = byId('wrap-film-brand');
+      const w2 = byId('wrap-film-brand-parts');
+
+      if (w1) w1.classList.toggle('hidden', !enabled);
+      if (w2) w2.classList.toggle('hidden', !enabled);
+
+      if (!enabled){
+        state.film_brand = null;
+        const a = byId('film_brand'); if (a) a.value = '';
+        const b = byId('film_brand_parts'); if (b) b.value = '';
+      }
+
+      postHeightToWix();
+    }
+
     function applyUI(){
       setText('hero-title', uiLabel('hero_title', byId('hero-title')?.textContent || ''));
       setText('hero-subtitle', uiLabel('hero_subtitle', byId('hero-subtitle')?.textContent || ''));
@@ -695,6 +733,10 @@
 
       setText('finish-title-pack', uiLabel('finish', byId('finish-title-pack')?.textContent || 'Tipo de cobertura'));
       setText('finish-title-parts', uiLabel('finish', byId('finish-title-parts')?.textContent || 'Tipo de cobertura'));
+
+      // NEW: film_brand labels
+      setText('lbl-film-brand', uiLabel('film_brand', byId('lbl-film-brand')?.textContent || 'Marca de la película (opcional)'));
+      setText('lbl-film-brand-parts', uiLabel('film_brand', byId('lbl-film-brand-parts')?.textContent || 'Marca de la película (opcional)'));
 
       const partsLabel = uiLabel('parts_block_title', 'Selección de partes (Carrocería)');
       setHTML('ui-title', emphasizeParen(partsLabel));
@@ -767,6 +809,9 @@
       }
 
       ui.ready = true;
+
+      // NEW: apply visibility toggle for film_brand
+      applyFilmBrandVisibility();
     }
 
     async function loadUIFields(){
@@ -834,6 +879,7 @@
     const appData = {
       centers: new Map(),
       finishes: new Map(),
+      filmBrands: [],
       partsCatalog: { frontal: [], lateral: [], trasera: [] },
       extrasList: [],
       serviciosList: []
@@ -856,6 +902,9 @@
       finish_title: "",
       finish_allow_partial: true,
       finish_warning_partial: "",
+
+      // NEW: film brand (vendor)
+      film_brand: null,
 
       selectedPackage: "",
       selectedParts: new Set(),
@@ -916,7 +965,9 @@
     function placeholderText(key, fallback){
       const t = uiLabel(key, '');
       return (t && t.trim()) ? t.trim() : fallback;
-    }    async function loadBrands(){
+    }
+
+    async function loadBrands(){
       const el = byId('brand');
       el.disabled = true;
       el.innerHTML = '<option value="">Cargando marcas...</option>';
@@ -938,7 +989,9 @@
       } finally {
         el.disabled = false;
       }
-    }    async function loadModels(brand){
+    }
+
+    async function loadModels(brand){
       const el = byId('model');
       el.disabled = true;
 
@@ -970,7 +1023,9 @@
       } finally {
         el.disabled = false;
       }
-    }    async function loadYears(){
+    }
+
+    async function loadYears(){
       const el = byId('year');
       el.disabled = true;
       el.innerHTML = '<option value="">Cargando años...</option>';
@@ -993,9 +1048,6 @@
         el.disabled = false;
       }
     }
-
-    // ----------------- LOAD: install_centers -----------------
-
 
     // ----------------- LOAD: install_centers -----------------
     async function loadInstallCenters(){
@@ -1030,10 +1082,6 @@
     }
 
     // ----------------- LOAD: Finishes -----------------
-
-
-    // ----------------- LOAD: Finishes -----------------
-    
     async function loadFinishes(){
       const finishSel = byId('finish');
       const finishSelParts = byId('finish_parts');
@@ -1072,9 +1120,64 @@
       }
     }
 
+    // ----------------- LOAD: Film Brands (NEW) -----------------
+    async function loadFilmBrands(){
+      const elA = byId('film_brand');
+      const elB = byId('film_brand_parts');
+      if (elA) elA.innerHTML = '<option value="">Cargando marcas...</option>';
+      if (elB) elB.innerHTML = '<option value="">Cargando marcas...</option>';
 
-    // ----------------- LOAD: catalog_services (replaces price_ui + price join) -----------------
+      try{
+        const { data } = await sb.from('v_catalog_film_brands')
+          .select('film_brand,title_es,sort_order,form_key')
+          .eq('form_key', FORM_KEY)
+          .order('sort_order', { ascending:true })
+          .throwOnError();
 
+        const rows = (data || [])
+          .filter(r => r && r.film_brand && (r.title_es || r.title))
+          .map(r => ({
+            film_brand: String(r.film_brand),
+            title: String(r.title_es || r.title).trim(),
+            sort_order: r.sort_order ?? 0
+          }));
+
+        appData.filmBrands = rows;
+
+        const ph = placeholderText('film_brand_placeholder', '— No especificado —');
+
+        const html =
+          `<option value="">${escapeHtml(ph)}</option>` +
+          rows.map(r => `<option value="${escapeHtml(r.film_brand)}">${escapeHtml(r.title)}</option>`).join('');
+
+        if (elA) elA.innerHTML = html;
+        if (elB) elB.innerHTML = html;
+
+        // keep UI toggle rule
+        applyFilmBrandVisibility();
+      } catch(e){
+        console.error('loadFilmBrands:', e);
+        if (elA) elA.innerHTML = '<option value="">Error al cargar marcas.</option>';
+        if (elB) elB.innerHTML = '<option value="">Error al cargar marcas.</option>';
+      }
+    }
+
+    function setFilmBrand(value){
+      const v = (value || '').trim();
+      state.film_brand = v ? v : null;
+    }
+
+    function syncFilmBrand(sourceId){
+      const a = byId('film_brand');
+      const b = byId('film_brand_parts');
+      if (!a || !b) return;
+
+      if (sourceId === 'film_brand') b.value = a.value;
+      if (sourceId === 'film_brand_parts') a.value = b.value;
+
+      setFilmBrand(sourceId === 'film_brand' ? a.value : b.value);
+      postHeightToWix();
+    }
 
     // ----------------- LOAD: price_ui + price (join) -----------------
     async function loadPriceUI(){
@@ -1197,7 +1300,8 @@
              state.selectedParts.size > 0 ||
              state.selectedExtras.size > 0 ||
              state.selectedServicios.size > 0 ||
-             !!state.finish_key;
+             !!state.finish_key ||
+             !!state.film_brand;
     }
 
     function resetSelections(){
@@ -1209,6 +1313,12 @@
       state.finish_title = '';
       state.finish_allow_partial = true;
       state.finish_warning_partial = '';
+
+      // NEW: film_brand reset
+      state.film_brand = null;
+      if (byId('film_brand')) byId('film_brand').value = '';
+      if (byId('film_brand_parts')) byId('film_brand_parts').value = '';
+
       byId('finish').value = '';
       byId('finish_parts').value = '';
       updatePackagesInfoUI();
@@ -1318,6 +1428,9 @@
         showStep(4);
         return;
       }
+
+      // ensure film_brand visibility rule applies when step 3 enters
+      applyFilmBrandVisibility();
 
       updatePackagesInfoUI();
       updatePartialWarningUI();
@@ -1760,7 +1873,8 @@
         service_basic: state.flow === 'total' ? (state.selectedPackage || '') : '',
         service_partial: servicePartialAll.join(', '),
 
-        marca_ppf: state.finish_key || state.finish_title,
+        // NEW CANON: film fields
+        film_brand: state.film_brand,
         finish_key: state.finish_key,
         finish_title: state.finish_title,
 
@@ -1847,6 +1961,12 @@
       state.finish_title = '';
       state.finish_allow_partial = true;
       state.finish_warning_partial = '';
+
+      // NEW: reset film_brand
+      state.film_brand = null;
+      if (byId('film_brand')) byId('film_brand').value = '';
+      if (byId('film_brand_parts')) byId('film_brand_parts').value = '';
+
       state.selectedPackage = '';
       state.selectedParts.clear();
       state.selectedExtras.clear();
@@ -2017,12 +2137,17 @@
         loadModels(''),
         loadYears(),
         loadInstallCenters(),
-        loadFinishes()
+        loadFinishes(),
+        loadFilmBrands()
       ]);
 
       await loadPriceUI();
 
       if (ui.ready) applyUI();
+
+      // Film brand listeners (NEW)
+      byId('film_brand')?.addEventListener('change', ()=> syncFilmBrand('film_brand'));
+      byId('film_brand_parts')?.addEventListener('change', ()=> syncFilmBrand('film_brand_parts'));
 
       // Step1 listeners
       byId('brand').addEventListener('change', async (e)=>{
