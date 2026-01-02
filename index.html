@@ -1863,15 +1863,26 @@
         phone: phoneE164,
         phone_country: phoneCountry,
 
-        marca: state.brand || byId('brand').value || '',
-        modelo: state.model || byId('model').value || '',
-        año: state.year || byId('year').value || '',
+        car_make: state.brand || byId('brand').value || '',
+        car_model: state.model || byId('model').value || '',
+        car_year: Number(state.year || byId('year').value) || null,
 
-        install_center_id: state.install_center_id,
-        install_center: state.install_center_title,
+        install_center_id: state.install_center_id || null,
+        install_center_title: (() => {
+      const direct = (state.install_center_title || '').trim();
+      if (direct) return direct;
 
-        service_basic: state.flow === 'total' ? (state.selectedPackage || '') : '',
-        service_partial: servicePartialAll.join(', '),
+      const id = String(state.install_center_id || '').trim();
+      if (!id) return '';
+
+      const row = appData.centers?.get(id);
+      const title = (row?.title_es || row?.title || '').trim();
+      const city = (row?.city || '').trim();
+      return city ? `${title} (${city})` : title;
+})(),
+
+service_package: state.flow === 'total' ? (state.selectedPackage || '') : '',
+partial_services: servicePartialAll,
 
         // NEW CANON: film fields
         film_brand: state.film_brand,
@@ -2302,3 +2313,4 @@
   </script>
 </body>
 </html>
+
