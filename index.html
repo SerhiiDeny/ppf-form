@@ -62,6 +62,8 @@
     .btn-yellow:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(245,191,0,.3); }
     .btn-yellow:active:not(:disabled) { transform: translateY(0); }
     .btn-yellow:disabled { opacity:.45; cursor:not-allowed; }
+    .btn-yellow.btn-success { background:#67d391; color:#111; box-shadow: 0 4px 12px rgba(103,211,145,.25); }
+    .btn-yellow.btn-success:disabled { opacity:1; cursor:default; }
 
     .btn-ghost {
       border:1px solid #3a3a3a; color:#eaeaea; border-radius:9999px; padding:.75rem 1.5rem;
@@ -422,29 +424,29 @@
         <h2 id="step5-title" class="section-title" tabindex="-1">5) Contacto</h2>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
+          <div id="wrap-name_client">
             <label class="small block mb-1" for="name_client">
               <span id="lbl-name">Nombre</span> <span id="star-name" class="accent">*</span>
             </label>
             <input id="name_client" class="w-full field" type="text" placeholder="Tu nombre" required autocomplete="name" />
             <div id="name-hint" class="text-xs error mt-1 hidden"></div>
           </div>
-          <div>
+          <div id="wrap-phone">
             <label class="small block mb-1" for="phone">
               <span id="lbl-phone">Teléfono</span> <span id="star-phone" class="accent">*</span>
             </label>
             <input id="phone" class="w-full field" type="tel" placeholder="+34 600 00 00 00" required inputmode="tel" autocomplete="tel" />
             <div id="phone-hint" class="text-xs error mt-1 hidden"></div>
           </div>
-          <div class="md:col-span-2">
+          <div class="md:col-span-2" id="wrap-email_client">
             <label class="small block mb-1" for="email_client">
               <span id="lbl-email">Email</span> <span id="star-email" class="accent">*</span>
             </label>
             <input id="email_client" class="w-full field" type="email" placeholder="tu@email.com" required inputmode="email" autocomplete="email" />
             <div id="email-hint" class="text-xs error mt-1 hidden"></div>
           </div>
-          <div class="md:col-span-2">
-            <label class="small block mb-1" for="comment" id="lbl-comment">Comentario (opcional)</label>
+          <div class="md:col-span-2" id="wrap-comment">
+            <label class="small block mb-1" for="comment"><span id="lbl-comment">Comentario (opcional)</span> <span id="star-comment" class="accent">*</span></label>
             <textarea id="comment" class="w-full field" rows="3" placeholder="Ej.: quiero mate, uso en carretera, etc."></textarea>
           </div>
 
@@ -457,7 +459,7 @@
         </div>
 
         <div class="space-y-3 pt-2">
-          <div class="rounded-xl border border-[#3a3a3a] bg-[#141414] p-4 space-y-3">
+          <div class="rounded-xl border border-[#3a3a3a] bg-[#141414] p-4 space-y-3" id="wrap-consent">
             <label class="flex items-start gap-3 cursor-pointer">
               <input
                 type="checkbox"
@@ -494,17 +496,19 @@
           </div>
         </div>
 
-        <div class="flex justify-between pt-3 gap-3">
+        <div class="pt-3 space-y-3 md:space-y-0 md:flex md:items-center md:justify-between md:gap-3">
           <button class="btn-ghost" id="back-5" type="button">Atrás</button>
-          <button id="submit" class="btn-yellow" type="button">
-            <span id="submit-text">Enviar presupuesto</span>
-            <span id="submit-spinner" class="hidden">
-              <span class="spinner"></span> Enviando...
-            </span>
-          </button>
-        </div>
 
-        <div id="msg" class="text-sm"></div>
+          <div class="flex flex-col md:flex-row md:items-center gap-3 md:justify-end">
+            <div id="msg" class="text-sm min-h-[22px]"></div>
+            <button id="submit" class="btn-yellow" type="button">
+              <span id="submit-text">Enviar presupuesto</span>
+              <span id="submit-spinner" class="hidden">
+                <span class="spinner"></span> Enviando...
+              </span>
+            </button>
+          </div>
+        </div>
       </section>
 
     </div>
@@ -529,7 +533,9 @@
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV3YXNsc2d5c3N5eHZpY29idmF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY5MDMzMzIsImV4cCI6MjA4MjQ3OTMzMn0.pACJsbed_r3hdpGa0_9Fn5HMu2O323pdXh57usXL6Uc";
     const WEBHOOK_URL = "https://ppf-intake-worker.ppfbarna.workers.dev/lead";
     const PRIVACY_URL = "https://www.ppfbarcelona.es/pol%C3%ADtica-de-privacidad";
-    const FORM_KEY = "ppf_quote";
+    const UI_FORM_KEY = "quote_v2";
+    const CATALOG_FORM_KEY = "ppf_quote";
+    const ANALYTICS_FORM_KEY = "quote_v2";
     // =================================
 
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -575,7 +581,39 @@
 
     function setMsg(text, ok=true){
       msgEl.textContent = text || '';
-      msgEl.className = ok ? 'text-sm ok' : 'text-sm error';
+      msgEl.className = ok ? 'text-sm ok min-h-[22px]' : 'text-sm error min-h-[22px]';
+    }
+
+    function resetSubmitSuccessState(){
+      const btn = byId('submit');
+      const submitText = byId('submit-text');
+      const submitSpinner = byId('submit-spinner');
+
+      if (btn) {
+        btn.classList.remove('btn-success');
+        btn.disabled = false;
+      }
+      if (submitText) {
+        submitText.textContent = uiLabel('btn_submit', 'Enviar presupuesto');
+        submitText.classList.remove('hidden');
+      }
+      if (submitSpinner) submitSpinner.classList.add('hidden');
+    }
+
+    function setSubmitSuccessState(label = 'Enviado'){
+      const btn = byId('submit');
+      const submitText = byId('submit-text');
+      const submitSpinner = byId('submit-spinner');
+
+      if (btn) {
+        btn.classList.add('btn-success');
+        btn.disabled = true;
+      }
+      if (submitText) {
+        submitText.textContent = label;
+        submitText.classList.remove('hidden');
+      }
+      if (submitSpinner) submitSpinner.classList.add('hidden');
     }
 
     function blurActive(){
@@ -606,6 +644,90 @@
       }
     }
 
+
+    // ---------- Internal form analytics ----------
+    const FORM_ANALYTICS_ENDPOINT = WEBHOOK_URL;
+    const FORM_ANALYTICS_SESSION_KEY = `${ANALYTICS_FORM_KEY}_analytics_session_id_v1`;
+
+    function getFormAnalyticsSessionId(){
+      try{
+        const existing = sessionStorage.getItem(FORM_ANALYTICS_SESSION_KEY);
+        if (existing) return existing;
+
+        const id = (window.crypto && crypto.randomUUID)
+          ? crypto.randomUUID()
+          : `session_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+
+        sessionStorage.setItem(FORM_ANALYTICS_SESSION_KEY, id);
+        return id;
+      } catch(e){
+        return `session_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+      }
+    }
+
+    function trackFormEvent(eventName, payload = {}){
+      try{
+        const body = {
+          type: 'form_analytics_event',
+          event: {
+            form_key: ANALYTICS_FORM_KEY,
+            session_id: getFormAnalyticsSessionId(),
+            event_name: eventName,
+            step: Number.isInteger(state?.step) ? state.step : null,
+            flow: state?.flow || null,
+            send_channel: state?.send_channel || null,
+            payload: payload && typeof payload === 'object' ? payload : {},
+            page_url: window.location.href,
+            referrer: document.referrer || '',
+            occurred_at: new Date().toISOString()
+          }
+        };
+
+        fetch(FORM_ANALYTICS_ENDPOINT, {
+          method: 'POST',
+          mode: 'cors',
+          keepalive: true,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        }).catch((e) => {
+          console.warn('form analytics event failed:', e);
+        });
+      } catch(e){
+        console.warn('form analytics event failed:', e);
+      }
+    }
+
+
+    function trackNavigationClick(direction, buttonId, fromStep, toStep, extra = {}){
+      trackFormEvent(direction === 'back' ? 'form.back_clicked' : 'form.next_clicked', {
+        button_id: buttonId,
+        from_step: fromStep,
+        to_step: toStep,
+        ...extra
+      });
+    }
+
+    function submitAnalyticsPayload(extra = {}){
+      const nameValue = (byId('name_client')?.value || '').trim();
+      const phoneValue = (byId('phone')?.value || '').trim();
+      const emailValue = (byId('email_client')?.value || '').trim();
+
+      return {
+        flow: state.flow || null,
+        send_channel: state.send_channel || null,
+        selected_package: state.selectedPackage || null,
+        selected_parts_count: state.selectedParts.size,
+        selected_extras_count: state.selectedExtras.size,
+        selected_servicios_count: state.selectedServicios.size,
+        finish_key: state.finish_key || null,
+        has_name: !!nameValue,
+        has_phone: !!phoneValue,
+        has_email: !!emailValue,
+        time_to_complete_seconds: Math.round((Date.now() - state.startedAt) / 1000),
+        ...extra
+      };
+    }
+
     // Wix auto-height: postMessage -> Velo changes iframe height
     function postHeightToWix(){
       try{
@@ -632,7 +754,7 @@
     function uiRow(key){ return ui.map.get(String(key)) || null; }
     function uiLabel(key, fallback=''){
       const r = uiRow(key);
-      const v = r?.label;
+      const v = r?.label_es ?? r?.label;
       return (v != null && String(v).trim() !== '') ? String(v) : fallback;
     }
     function uiMeta(key){
@@ -665,6 +787,46 @@
       const el = byId(id);
       if (!el) return;
       el.innerHTML = String(html ?? '');
+    }
+
+    function uiKey(first, ...rest){
+      if (ui.map.has(String(first))) return String(first);
+      for (const key of rest){
+        if (ui.map.has(String(key))) return String(key);
+      }
+      return String(first);
+    }
+
+    function applyControlConfig(fieldKey, controlId, starId, defaultRequired=false){
+      const control = byId(controlId);
+      if (!control) return;
+      const enabled = uiEnabled(fieldKey, true);
+      const required = enabled && uiRequired(fieldKey, defaultRequired);
+      if (required) control.setAttribute('required', 'required');
+      else control.removeAttribute('required');
+      control.disabled = !enabled || control.disabled === true && false;
+      const star = byId(starId);
+      if (star) star.style.display = required ? '' : 'none';
+      const meta = uiMeta(fieldKey);
+      if (meta.placeholder && ('placeholder' in control)) control.setAttribute('placeholder', String(meta.placeholder));
+    }
+
+    function applyWrapVisibility(fieldKey, wrapId, controlIds=[]){
+      const wrap = byId(wrapId);
+      const enabled = uiEnabled(fieldKey, true);
+      if (wrap) wrap.classList.toggle('hidden', !enabled);
+      for (const id of controlIds){
+        const el = byId(id);
+        if (el) el.disabled = !enabled;
+      }
+    }
+
+    function isActiveRequired(fieldKey, defaultRequired=false){
+      return uiEnabled(fieldKey, true) && uiRequired(fieldKey, defaultRequired);
+    }
+
+    function isActive(fieldKey){
+      return uiEnabled(fieldKey, true);
     }
 
     function emphasizeParen(label){
@@ -810,6 +972,34 @@
 
       ui.ready = true;
 
+      // Apply enabled/required config from catalog_ui_form_fields
+      applyWrapVisibility('brand', 'wrap-brand', ['brand']);
+      applyControlConfig('brand', 'brand', 'star-brand', true);
+
+      applyWrapVisibility('model', 'wrap-model', ['model']);
+      applyControlConfig('model', 'model', 'star-model', true);
+
+      applyWrapVisibility('year', 'wrap-year', ['year']);
+      applyControlConfig('year', 'year', 'star-year', true);
+
+      applyWrapVisibility('name_client', 'wrap-name_client', ['name_client']);
+      applyControlConfig('name_client', 'name_client', 'star-name', true);
+
+      applyWrapVisibility('phone', 'wrap-phone', ['phone']);
+      applyControlConfig('phone', 'phone', 'star-phone', true);
+
+      applyWrapVisibility('email_client', 'wrap-email_client', ['email_client']);
+      applyControlConfig('email_client', 'email_client', 'star-email', true);
+
+      applyWrapVisibility('comment', 'wrap-comment', ['comment']);
+      applyControlConfig('comment', 'comment', 'star-comment', false);
+
+      applyWrapVisibility('center', 'wrap-center', ['install_center']);
+
+      const consentKey = uiKey('consent', 'privacy_text', 'privacy_policy_accepted');
+      applyWrapVisibility(consentKey, 'wrap-consent', ['consent']);
+      applyControlConfig(consentKey, 'consent', null, true);
+
       // NEW: apply visibility toggle for film_brand
       applyFilmBrandVisibility();
     }
@@ -817,8 +1007,10 @@
     async function loadUIFields(){
       try{
         const { data } = await sb
-          .from('v_catalog_ui_form_fields')
-          .select('field_key,step,label_es,enabled,required,sort_order,meta')
+          .from('catalog_ui_form_fields')
+          .select('form_key,field_key,step,label_es,enabled,required,sort_order,meta')
+          .eq('form_key', UI_FORM_KEY)
+          .order('step', { ascending: true })
           .order('sort_order', { ascending: true })
           .throwOnError();
 
@@ -834,7 +1026,7 @@
     }
 
     // ----------------- FALLBACK QUEUE (localStorage) -----------------
-    const PENDING_KEY = `${FORM_KEY}_pending_queue_v1`;
+    const PENDING_KEY = `${UI_FORM_KEY}_pending_queue_v1`;
 
     function readPending(){
       try{
@@ -959,6 +1151,13 @@
         flow: state.flow,
         time_elapsed: Math.round((Date.now() - state.startedAt) / 1000)
       });
+
+      trackFormEvent('form.step_viewed', {
+        step: n,
+        previous_step: Number.isInteger(state.prevStep) ? state.prevStep : null,
+        flow: state.flow || null,
+        time_elapsed: Math.round((Date.now() - state.startedAt) / 1000)
+      });
     }
 
     // ----------------- LOAD: Brands/Models/Years -----------------
@@ -1058,7 +1257,8 @@
         // Prefer VIEW: already filtered (enabled=true) + safe columns
         const { data } = await sb
           .from('v_catalog_install_centers')
-          .select('center_key,title_es,city')
+          .select('form_key,center_key,title_es,city')
+          .eq('form_key', CATALOG_FORM_KEY)
           .order('sort_order', { ascending:true })
           .throwOnError();
 
@@ -1091,7 +1291,7 @@
       try{
         const { data } = await sb.from('v_catalog_finishes')
           .select('finish_key,title_es,allow_partial,warning_partial,sort_order,form_key')
-          .eq('form_key', FORM_KEY)
+          .eq('form_key', CATALOG_FORM_KEY)
           .order('sort_order', { ascending:true })
           .throwOnError();
 
@@ -1130,7 +1330,7 @@
       try{
         const { data } = await sb.from('v_catalog_film_brands')
           .select('film_brand,title_es,sort_order,form_key')
-          .eq('form_key', FORM_KEY)
+          .eq('form_key', CATALOG_FORM_KEY)
           .order('sort_order', { ascending:true })
           .throwOnError();
 
@@ -1183,7 +1383,8 @@
     async function loadPriceUI(){
       try{
         const { data } = await sb.from('v_catalog_services')
-          .select('service_key,title_es,service_type,sort_order,ui_step,ui_block,ui_group,ui_tab')
+          .select('form_key,service_key,title_es,service_type,sort_order,ui_step,ui_block,ui_group,ui_tab')
+          .eq('form_key', CATALOG_FORM_KEY)
           .order('sort_order', { ascending:true })
           .throwOnError();
 
@@ -1281,9 +1482,9 @@
 
     function step1MissingFields(){
       const miss = [];
-      if (!byId('brand').value) miss.push(labelForMissing('brand', 'Marca'));
-      if (!byId('model').value) miss.push(labelForMissing('model', 'Modelo'));
-      if (!byId('year').value) miss.push(labelForMissing('year', 'Año'));
+      if (isActiveRequired('brand', true) && !byId('brand').value) miss.push(labelForMissing('brand', 'Marca'));
+      if (isActiveRequired('model', true) && !byId('model').value) miss.push(labelForMissing('model', 'Modelo'));
+      if (isActiveRequired('year', true) && !byId('year').value) miss.push(labelForMissing('year', 'Año'));
       return miss;
     }
 
@@ -1327,7 +1528,10 @@
       postHeightToWix();
     }
 
-    function setFlow(flow){
+    function setFlow(flow, options = {}){
+      const shouldTrack = options.track !== false;
+      const previousFlow = state.flow || null;
+
       if (state.flow && state.flow !== flow && hasSelections()){
         const ok = confirm('Cambiar el tipo reseteará tu selección. ¿Continuar?');
         if (!ok) return;
@@ -1349,6 +1553,18 @@
       byId('step2-hint').textContent = flow ? '' : 'Selecciona una opción.';
 
       trackEvent('flow_selected', { flow });
+
+      if (shouldTrack && flow) {
+        trackFormEvent('form.flow_selected', {
+          flow,
+          previous_flow: previousFlow,
+          selected_package: state.selectedPackage || null,
+          selected_parts_count: state.selectedParts.size,
+          selected_extras_count: state.selectedExtras.size,
+          selected_servicios_count: state.selectedServicios.size
+        });
+      }
+
       postHeightToWix();
     }
 
@@ -1650,12 +1866,22 @@
     });
 
     // ----------------- STEP 5: send channel UI -----------------
-    function setSendChannel(ch){
+    function setSendChannel(ch, options = {}){
+      const shouldTrack = options.track !== false;
+      const previousChannel = state.send_channel || null;
+
       state.send_channel = (ch === 'whatsapp') ? 'whatsapp' : 'email';
       byId('send-tab-wa').classList.toggle('active', state.send_channel === 'whatsapp');
       byId('send-tab-wa').setAttribute('aria-selected', state.send_channel === 'whatsapp' ? 'true' : 'false');
       byId('send-tab-email').classList.toggle('active', state.send_channel === 'email');
       byId('send-tab-email').setAttribute('aria-selected', state.send_channel === 'email' ? 'true' : 'false');
+
+      if (shouldTrack && previousChannel !== state.send_channel) {
+        trackFormEvent('form.send_channel_selected', {
+          send_channel: state.send_channel,
+          previous_send_channel: previousChannel
+        });
+      }
     }
 
     // ----------------- Inline validation -----------------
@@ -1690,7 +1916,9 @@
 
     function validateName(){
       const el = byId('name_client');
+      if (!isActive('name_client')) return true;
       const v = (el.value||'').trim();
+      if (!isActiveRequired('name_client', true) && !v) { clearFieldMark(el); setFieldHint('name-hint', ''); return true; }
       const ok = v.length >= 2;
       markField(el, ok);
       setFieldHint('name-hint', ok ? '' : 'Escribe tu nombre (mínimo 2 caracteres).');
@@ -1707,9 +1935,11 @@
 
     function validatePhone(){
       const el = byId('phone');
+      if (!isActive('phone')) return true;
       const raw = (el.value||'').trim();
 
       if (!raw){
+        if (!isActiveRequired('phone', true)) { clearFieldMark(el); setFieldHint('phone-hint', ''); return true; }
         markField(el, false);
         setFieldHint('phone-hint', 'Introduce tu teléfono.');
         return false;
@@ -1746,7 +1976,9 @@
 
     function validateEmail(){
       const el = byId('email_client');
+      if (!isActive('email_client')) return true;
       const v = (el.value||'').trim();
+      if (!isActiveRequired('email_client', true) && !v) { clearFieldMark(el); setFieldHint('email-hint', ''); return true; }
       const ok = emailValid(v);
       markField(el, ok);
       setFieldHint('email-hint', ok ? '' : 'Email inválido.');
@@ -1754,8 +1986,10 @@
     }
 
     function validateConsent(){
+      const consentKey = uiKey('consent', 'privacy_text', 'privacy_policy_accepted');
+      if (!isActive(consentKey)) return true;
       const checked = byId('consent')?.checked;
-      if (!checked){
+      if (isActiveRequired(consentKey, true) && !checked){
         setFieldHint('consent-hint', 'Debes aceptar la política de privacidad para continuar.');
         return false;
       }
@@ -1857,15 +2091,15 @@
       const phoneCountry = getPhoneCountry();
 
       return {
-        name_client: (byId('name_client')?.value || '').trim(),
-        email_client: (byId('email_client')?.value || '').trim(),
+        name_client: isActive('name_client') ? (byId('name_client')?.value || '').trim() : '',
+        email_client: isActive('email_client') ? (byId('email_client')?.value || '').trim() : '',
 
-        phone: phoneE164,
+        phone: isActive('phone') ? phoneE164 : '',
         phone_country: phoneCountry,
 
-        car_make: state.brand || byId('brand').value || '',
-        car_model: state.model || byId('model').value || '',
-        car_year: Number(state.year || byId('year').value) || null,
+        car_make: isActive('brand') ? (state.brand || byId('brand').value || '') : '',
+        car_model: isActive('model') ? (state.model || byId('model').value || '') : '',
+        car_year: isActive('year') ? (Number(state.year || byId('year').value) || null) : null,
 
         install_center_id: state.install_center_id || null,
         install_center_title: (() => {
@@ -1891,7 +2125,7 @@ partial_services: servicePartialAll,
 
         flow: state.flow,
         check_promotion: byId('promo')?.checked ? 'Checked' : '',
-        comment: (byId('comment')?.value || '').trim(),
+        comment: isActive('comment') ? (byId('comment')?.value || '').trim() : '',
 
         mode: 'text',
         send_channel: state.send_channel,
@@ -1899,7 +2133,7 @@ partial_services: servicePartialAll,
         consent_at: consentAt,
         consent_policy_url: PRIVACY_URL,
 
-        privacy_policy_accepted: !!byId('consent')?.checked
+        privacy_policy_accepted: isActive(uiKey('consent', 'privacy_text', 'privacy_policy_accepted')) ? !!byId('consent')?.checked : false
       };
     }
 
@@ -1993,7 +2227,7 @@ partial_services: servicePartialAll,
       byId('finish_parts').value = '';
       byId('install_center').value = '';
 
-      setFlow('');
+      setFlow('', { track: false });
 
       byId('block-packages').classList.add('hidden');
       byId('block-parts').classList.add('hidden');
@@ -2010,9 +2244,9 @@ partial_services: servicePartialAll,
       updateViewButtonCount();
       closeSheet();
 
-      setSendChannel('email');
+      setSendChannel('email', { track: false });
 
-      byId('submit-text').textContent = uiLabel('btn_submit', 'Enviar presupuesto');
+      resetSubmitSuccessState();
 
       showStep(1);
       updateStep1UI();
@@ -2022,6 +2256,8 @@ partial_services: servicePartialAll,
     // ----------------- Submit protections -----------------
     async function submitForm(){
       setMsg('');
+      resetSubmitSuccessState();
+      let keepSuccessState = false;
 
       const now = Date.now();
       if (now - state.lastSubmitAt < 3000){
@@ -2041,6 +2277,10 @@ partial_services: servicePartialAll,
       submitText.classList.add('hidden');
       submitSpinner.classList.remove('hidden');
 
+      trackFormEvent('form.submit_clicked', submitAnalyticsPayload({
+        button_id: 'submit'
+      }));
+
       try{
         // single source of truth for contact validation
         if (!step5Valid()) {
@@ -2059,7 +2299,12 @@ partial_services: servicePartialAll,
         const payload = collectPayload();
 
         await postToWebhook(payload);
-        setMsg('Enviado. Te contactaremos lo antes posible.', true);
+        trackFormEvent('form.submit_succeeded', submitAnalyticsPayload({
+          queued: false
+        }));
+        keepSuccessState = true;
+        setSubmitSuccessState();
+        setMsg('Solicitud enviada correctamente. Te contactaremos lo antes posible.', true);
 
         trackEvent('form_submitted_success', {
           flow: state.flow,
@@ -2075,7 +2320,14 @@ partial_services: servicePartialAll,
           });
         }
 
-        await resetFormAfterSuccess();
+        window.setTimeout(() => {
+          resetFormAfterSuccess().catch((err) => {
+            console.warn('reset after success failed:', err);
+            resetSubmitSuccessState();
+          });
+        }, 1500);
+
+        return;
 
       } catch(e){
         console.error('submit:', e);
@@ -2086,6 +2338,9 @@ partial_services: servicePartialAll,
         const isValidation = /completa|obligatorios|inválido|aceptar|faltan/i.test(errMsg);
 
         if (isValidation){
+          trackFormEvent('form.submit_validation_failed', submitAnalyticsPayload({
+            error_message: errMsg
+          }));
           setMsg('Error: ' + errMsg, false);
           trackEvent('form_submit_validation_error', { flow: state.flow, error: errMsg });
         } else {
@@ -2093,17 +2348,38 @@ partial_services: servicePartialAll,
           try{
             const payload = collectPayload();
             enqueuePending(payload);
+
+            trackFormEvent('form.submit_failed', submitAnalyticsPayload({
+              queued: true,
+              error_message: errMsg
+            }));
+
+            keepSuccessState = true;
+            setSubmitSuccessState('Guardado');
             setMsg('No se pudo enviar ahora. Guardamos tu solicitud y la reintentaremos automáticamente.', true);
             trackEvent('form_submit_failed_queued', { flow: state.flow, error: errMsg });
+
+            window.setTimeout(() => {
+              resetFormAfterSuccess().catch((err) => {
+                console.warn('reset after queued submit failed:', err);
+                resetSubmitSuccessState();
+              });
+            }, 1500);
           } catch(qe){
+            trackFormEvent('form.submit_failed', submitAnalyticsPayload({
+              queued: false,
+              error_message: errMsg
+            }));
             setMsg('Error: ' + errMsg, false);
             trackEvent('form_submit_failed_network', { flow: state.flow, error: errMsg });
           }
         }
       } finally {
-        btn.disabled = false;
-        submitText.classList.remove('hidden');
-        submitSpinner.classList.add('hidden');
+        if (!keepSuccessState) {
+          btn.disabled = false;
+          submitText.classList.remove('hidden');
+          submitSpinner.classList.add('hidden');
+        }
         state.submitting = false;
       }
     }
@@ -2137,6 +2413,7 @@ partial_services: servicePartialAll,
     // ----------------- INIT -----------------
     async function init(){
       trackEvent('form_page_view', { referrer: document.referrer || 'direct' });
+      trackFormEvent('form.page_viewed', { referrer: document.referrer || 'direct' });
 
       // try to flush queued leads (best effort)
       flushPending().then(()=>{}).catch(()=>{});
@@ -2189,6 +2466,9 @@ partial_services: servicePartialAll,
           return;
         }
         byId('step1-hint').textContent = '';
+        trackNavigationClick('next', 'next-1', 1, 2, {
+          missing_fields_count: 0
+        });
         showStep(2);
       });
 
@@ -2197,7 +2477,10 @@ partial_services: servicePartialAll,
       byId('card-custom').addEventListener('click', ()=> setFlow('custom'));
       byId('card-otros').addEventListener('click', ()=> setFlow('otros'));
 
-      byId('back-2').addEventListener('click', ()=> showStep(1));
+      byId('back-2').addEventListener('click', ()=>{
+        trackNavigationClick('back', 'back-2', 2, 1);
+        showStep(1);
+      });
       byId('next-2').addEventListener('click', ()=>{
         if (!state.flow){
           byId('step2-hint').textContent = 'Selecciona una opción.';
@@ -2205,6 +2488,9 @@ partial_services: servicePartialAll,
           return;
         }
         byId('step2-hint').textContent = '';
+        trackNavigationClick('next', 'next-2', 2, 3, {
+          flow: state.flow || null
+        });
         showStep(3);
         enterStep3();
       });
@@ -2223,22 +2509,43 @@ partial_services: servicePartialAll,
       byId('finish_parts').addEventListener('change', ()=> syncFinish('finish_parts'));
 
       // Step 3 nav (packages)
-      byId('back-3').addEventListener('click', ()=> showStep(2));
+      byId('back-3').addEventListener('click', ()=>{
+        trackNavigationClick('back', 'back-3', 3, 2, {
+          flow: state.flow || null
+        });
+        showStep(2);
+      });
       byId('next-3').addEventListener('click', ()=>{
         if (!state.selectedPackage) { byId('step3-hint').textContent = 'Selecciona un paquete.'; postHeightToWix(); return; }
         if (!state.finish_key) { byId('step3-hint').textContent = 'Selecciona el tipo de cobertura.'; postHeightToWix(); return; }
         byId('step3-hint').textContent = '';
         state.step4BackTarget = 3;
+        trackNavigationClick('next', 'next-3', 3, 4, {
+          flow: state.flow || null,
+          selected_package: state.selectedPackage || null,
+          finish_key: state.finish_key || null
+        });
         showStep(4);
       });
 
       // Step 3B parts nav
-      byId('back-3b').addEventListener('click', ()=> showStep(2));
+      byId('back-3b').addEventListener('click', ()=>{
+        trackNavigationClick('back', 'back-3b', 3, 2, {
+          flow: state.flow || null,
+          selected_parts_count: state.selectedParts.size
+        });
+        showStep(2);
+      });
       byId('next-3b').addEventListener('click', ()=>{
         if (!state.finish_key) { byId('step3-hint').textContent = 'Selecciona el tipo de cobertura.'; postHeightToWix(); return; }
         if (state.selectedParts.size === 0) { byId('step3-hint').textContent = 'Selecciona al menos una parte.'; postHeightToWix(); return; }
         byId('step3-hint').textContent = '';
         state.step4BackTarget = 3;
+        trackNavigationClick('next', 'next-3b', 3, 4, {
+          flow: state.flow || null,
+          selected_parts_count: state.selectedParts.size,
+          finish_key: state.finish_key || null
+        });
         showStep(4);
       });
 
@@ -2258,6 +2565,11 @@ partial_services: servicePartialAll,
 
       byId('back-4').addEventListener('click', ()=>{
         const target = state.step4BackTarget || 3;
+        trackNavigationClick('back', 'back-4', 4, target, {
+          flow: state.flow || null,
+          selected_extras_count: state.selectedExtras.size,
+          selected_servicios_count: state.selectedServicios.size
+        });
         if (target === 2){
           showStep(2);
           return;
@@ -2266,15 +2578,28 @@ partial_services: servicePartialAll,
         enterStep3();
       });
 
-      byId('next-4').addEventListener('click', ()=> showStep(5));
+      byId('next-4').addEventListener('click', ()=>{
+        trackNavigationClick('next', 'next-4', 4, 5, {
+          flow: state.flow || null,
+          selected_extras_count: state.selectedExtras.size,
+          selected_servicios_count: state.selectedServicios.size
+        });
+        showStep(5);
+      });
 
       // Step 5
-      byId('back-5').addEventListener('click', ()=> showStep(4));
+      byId('back-5').addEventListener('click', ()=>{
+        trackNavigationClick('back', 'back-5', 5, 4, {
+          flow: state.flow || null,
+          send_channel: state.send_channel || null
+        });
+        showStep(4);
+      });
 
       // send channel tabs
       byId('send-tab-wa').addEventListener('click', ()=> setSendChannel('whatsapp'));
       byId('send-tab-email').addEventListener('click', ()=> setSendChannel('email'));
-      setSendChannel(state.send_channel);
+      setSendChannel(state.send_channel, { track: false });
 
       // Inline validation listeners
       byId('name_client').addEventListener('blur', validateName);
@@ -2295,7 +2620,7 @@ partial_services: servicePartialAll,
 
       // Initial screen
       showStep(1);
-      setFlow('');
+      setFlow('', { track: false });
       setFinishFromKey('');
       updatePackagesInfoUI();
       updatePartialWarningUI();
