@@ -529,8 +529,10 @@
 
   <script>
     /// ========= CONFIGURATION =========
-    const SUPABASE_URL = "https://ewaslsgyssyxvicobvaw.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV3YXNsc2d5c3N5eHZpY29idmF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY5MDMzMzIsImV4cCI6MjA4MjQ3OTMzMn0.pACJsbed_r3hdpGa0_9Fn5HMu2O323pdXh57usXL6Uc";
+    const SUPABASE_URL = (typeof window.PRESUPUESTO_SUPABASE_URL === "string" && window.PRESUPUESTO_SUPABASE_URL.trim())
+      || "https://pxgjwdhwxtzizhgotqur.supabase.co";
+    const SUPABASE_ANON_KEY = (typeof window.PRESUPUESTO_SUPABASE_ANON_KEY === "string" && window.PRESUPUESTO_SUPABASE_ANON_KEY.trim())
+      || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4Z2p3ZGh3eHR6aXpoZ290cXVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMwMDc4MjAsImV4cCI6MjA2ODU4MzgyMH0.H-31tjjjcNAn7jpMutYZN6LLImqdsVvYoJWxhYtER84";
     const WEBHOOK_URL = "https://ppf-intake-worker.ppfbarna.workers.dev/lead";
     const PRIVACY_URL = "https://www.ppfbarcelona.es/pol%C3%ADtica-de-privacidad";
     const UI_FORM_KEY = "quote_v2";
@@ -541,6 +543,10 @@
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
     });
+
+    if (SUPABASE_URL.includes('__PPF_BUDGETS_SUPABASE_URL__') || SUPABASE_ANON_KEY.includes('__PPF_BUDGETS_SUPABASE_ANON_KEY__')) {
+      console.error('CONFIG ERROR: replace __PPF_BUDGETS_SUPABASE_URL__ and __PPF_BUDGETS_SUPABASE_ANON_KEY__ before publishing.');
+    }
 
     // Safety guard: never use SERVICE_ROLE_DO_NOT_USE_IN_BROWSER key in frontend
     function jwtRole(token){
@@ -555,7 +561,7 @@
       console.error('SECURITY ERROR: SERVICE_ROLE_DO_NOT_USE_IN_BROWSER key detected. Replace with anon public key.');
       const b = document.createElement('div');
       b.className = 'max-w-3xl mx-auto px-5 py-3';
-      b.innerHTML = '<div class="warnbox"><div class="title">Configuración incorrecta</div><div class="text-sm">Estás usando <b>SERVICE_ROLE_DO_NOT_USE_IN_BROWSER</b> en el navegador. Sustituye SUPABASE_ANON_KEY por la <b>anon public key</b> del proyecto de catálogos.</div></div>';
+      b.innerHTML = '<div class="warnbox"><div class="title">Configuración incorrecta</div><div class="text-sm">Estás usando <b>SERVICE_ROLE_DO_NOT_USE_IN_BROWSER</b> en el navegador. Sustituye SUPABASE_ANON_KEY por la <b>anon public key</b> del proyecto PPF budgets.</div></div>';
       document.body.prepend(b);
     }
 
@@ -1254,25 +1260,33 @@
       el.disabled = true;
       el.innerHTML = '<option value="">Cargando centros...</option>';
       try{
-        // Prefer VIEW: already filtered (enabled=true) + safe columns
+        // Cutover: centers are global operational locations in PPF budgets.
+        // Do NOT filter by CATALOG_FORM_KEY here: Presupuesto uses CATALOG_FORM_KEY=ppf_quote,
+        // while the compatibility view may expose centers as global rows or pedir_cita_v1 rows.
+        // Public UI displays title_es; form submits internal location_id (for example BCN_001).
         const { data } = await sb
           .from('v_catalog_install_centers')
-          .select('form_key,center_key,title_es,city')
-          .eq('form_key', CATALOG_FORM_KEY)
+          .select('form_key,location_id,title_es,city,sort_order,timezone')
           .order('sort_order', { ascending:true })
           .throwOnError();
 
-        const rows = (data||[]).filter(r => r && r.center_key && r.title_es);
+        const rows = (data||[]).filter(r => r && r.location_id && r.title_es);
 
         const ph = placeholderText('center_placeholder', 'Selecciona una opción');
+        if (!rows.length) {
+          console.warn('v_catalog_install_centers returned 0 rows. Check service_locations enabled/active and anon SELECT policy.');
+        }
         el.innerHTML =
           `<option value="">${escapeHtml(ph)}</option>` +
           rows.map(r => {
-            const label = r.city ? `${r.title_es} (${r.city})` : r.title_es;
-            return `<option value="${escapeHtml(String(r.center_key))}">${escapeHtml(String(label))}</option>`;
+            const label = r.title_es;
+            return `<option value="${escapeHtml(String(r.location_id))}">${escapeHtml(String(label))}</option>`;
           }).join('');
 
-        appData.centers = new Map(rows.map(r => [String(r.center_key), r]));
+        appData.centers = new Map(rows.map(r => [String(r.location_id), {
+          ...r,
+          title: String(r.title_es || '')
+        }]));
       } catch(e){
         console.error('loadInstallCenters:', e);
         el.innerHTML = '<option value="">Error al cargar centros.</option>';
@@ -2111,8 +2125,7 @@
 
       const row = appData.centers?.get(id);
       const title = (row?.title_es || row?.title || '').trim();
-      const city = (row?.city || '').trim();
-      return city ? `${title} (${city})` : title;
+      return title;
 })(),
 
 service_package: state.flow === 'total' ? (state.selectedPackage || '') : '',
