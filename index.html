@@ -745,6 +745,128 @@
       } catch(e){}
     }
 
+    // ---------- Attribution (UTM / gclid) from the Wix parent page ----------
+    // The form runs inside an iframe on Wix, so window.location.search here belongs
+    // to the iframe, not to the landing page the visitor actually arrived on.
+    // The parent page sends { type: 'PPF_ATTRIBUTION', payload: {...} } via postMessage;
+    // window.location.search is only a fallback for the form opened directly.
+    const ATTRIBUTION_KEY = 'ppf_attribution';
+    const ATTRIBUTION_FIELDS = ['utm_source','utm_medium','utm_campaign','utm_content','utm_term','gclid','fbclid'];
+
+    function attrValue(v, max = 255){
+      if (v === null || v === undefined) return null;
+      const s = String(v).trim();
+      if (!s) return null;
+      return s.slice(0, max);
+    }
+
+    // Always returns the full shape, with null for anything missing.
+    function normalizeAttribution(raw, source){
+      const out = {};
+      ATTRIBUTION_FIELDS.forEach(k => { out[k] = attrValue(raw ? raw[k] : null); });
+      out.parent_url = attrValue(raw ? raw.parent_url : null, 1000);
+      out._source = source || (raw && raw._source) || null;
+      return out;
+    }
+
+    // "Non-empty" = at least one real marketing parameter. parent_url alone is not enough
+    // to count as a first touch, otherwise every plain page view would lock the record.
+    function hasAttributionSignal(a){
+      return !!a && ATTRIBUTION_FIELDS.some(k => !!a[k]);
+    }
+
+    function readStoredAttribution(){
+      try {
+        const raw = sessionStorage.getItem(ATTRIBUTION_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object') return null;
+        return normalizeAttribution(parsed, parsed._source);
+      } catch(e){ return null; }
+    }
+
+    function saveAttribution(a){
+      try { sessionStorage.setItem(ATTRIBUTION_KEY, JSON.stringify(a)); } catch(e){}
+    }
+
+    function readAttributionFromLocation(){
+      try {
+        const qs = new URLSearchParams(window.location.search || '');
+        const raw = {};
+        ATTRIBUTION_FIELDS.forEach(k => { raw[k] = qs.get(k); });
+        // Only meaningful when the form is NOT embedded: inside the Wix iframe
+        // location.href is the github.io URL, which is exactly what we must not send.
+        raw.parent_url = (window.parent === window) ? window.location.href : null;
+        return normalizeAttribution(raw, 'url');
+      } catch(e){ return normalizeAttribution(null, 'url'); }
+    }
+
+    // postMessage wins over location, and the first non-empty postMessage set wins
+    // over any later one (first-touch must not be overwritten).
+    function storeAttribution(incoming){
+      const stored = readStoredAttribution();
+      const incomingHasSignal = hasAttributionSignal(incoming);
+      const storedHasSignal = hasAttributionSignal(stored);
+
+      if (!incomingHasSignal){
+        // Never replace a non-empty set with an empty one.
+        if (storedHasSignal){
+          // Still allow filling in a missing parent_url.
+          if (!stored.parent_url && incoming.parent_url){
+            stored.parent_url = incoming.parent_url;
+            saveAttribution(stored);
+          }
+          return stored;
+        }
+        if (stored && stored._source === 'postmessage' && incoming._source !== 'postmessage') return stored;
+        saveAttribution(incoming);
+        return incoming;
+      }
+
+      // First non-empty postMessage set is kept as the first touch.
+      if (storedHasSignal && stored._source === 'postmessage') return stored;
+
+      saveAttribution(incoming);
+      return incoming;
+    }
+
+    function initAttribution(){
+      // 1) Fallback from our own query string (direct open, no Wix).
+      storeAttribution(readAttributionFromLocation());
+
+      // 2) Listen for the parent page.
+      window.addEventListener('message', (event) => {
+        try {
+          if (event.source !== window.parent) return;
+          const data = event.data;
+          if (!data || typeof data !== 'object') return;
+          if (data.type !== 'PPF_ATTRIBUTION') return;
+          storeAttribution(normalizeAttribution(data.payload || {}, 'postmessage'));
+        } catch(e){}
+      });
+
+      // 3) Tell the parent we are ready to receive it. The Velo handler may attach
+      //    later than our load, so repeat a few times (cheap, idempotent).
+      sendAttributionReady();
+      [200, 800, 2000].forEach(ms => setTimeout(sendAttributionReady, ms));
+    }
+
+    function sendAttributionReady(){
+      try { window.parent?.postMessage({ type: 'PPF_READY' }, '*'); } catch(e){}
+    }
+
+    // Flat fields for the lead payload; missing values are sent as null, never omitted.
+    // The Worker assembles them into the nested `attribution` object WF-01 reads.
+    function getAttributionFields(){
+      const a = readStoredAttribution() || normalizeAttribution(null, null);
+      const out = {};
+      ATTRIBUTION_FIELDS.forEach(k => { out[k] = a[k] || null; });
+      out.referrer = a.parent_url || null;
+      return out;
+    }
+
+    initAttribution();
+
     // ---------- UI from ui_form_fields ----------
     const ui = { map: new Map(), ready: false };
 
@@ -2104,7 +2226,13 @@
       const phoneE164 = getPhoneE164();
       const phoneCountry = getPhoneCountry();
 
+      const attribution = getAttributionFields();
+
       return {
+        // Attribution: utm_*, gclid, fbclid + referrer (= parent page URL, not document.referrer).
+        // Always present; null when unknown.
+        ...attribution,
+
         name_client: isActive('name_client') ? (byId('name_client')?.value || '').trim() : '',
         email_client: isActive('email_client') ? (byId('email_client')?.value || '').trim() : '',
 
