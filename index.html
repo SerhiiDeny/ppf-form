@@ -830,14 +830,38 @@
       return incoming;
     }
 
+    // Wix wraps the HTML Embed in an extra filesusr.com iframe, so the form sits two
+    // levels deep: Wix page (window.top) -> wrapper -> form. window.parent is the
+    // wrapper; PPF_ATTRIBUTION comes from window.top. Collect the whole ancestor chain.
+    function ancestorWindows(){
+      const chain = [];
+      try {
+        let w = window;
+        while (w !== window.top && w.parent && w.parent !== w){
+          w = w.parent;
+          chain.push(w);
+        }
+      } catch(e){}
+      return chain;
+    }
+
+    // Accept a message from any window above us, not just the immediate parent.
+    // If the chain cannot be read, do not reject — the type filter is the real guard.
+    function isFromAncestorWindow(source){
+      if (!source) return false;
+      const chain = ancestorWindows();
+      if (!chain.length) return true;
+      return chain.some(w => w === source);
+    }
+
     function initAttribution(){
       // 1) Fallback from our own query string (direct open, no Wix).
       storeAttribution(readAttributionFromLocation());
 
-      // 2) Listen for the parent page.
+      // 2) Listen for the parent page (or any ancestor above the Wix wrapper).
       window.addEventListener('message', (event) => {
         try {
-          if (event.source !== window.parent) return;
+          if (!isFromAncestorWindow(event.source)) return;
           const data = event.data;
           if (!data || typeof data !== 'object') return;
           if (data.type !== 'PPF_ATTRIBUTION') return;
@@ -851,8 +875,12 @@
       [200, 800, 2000].forEach(ms => setTimeout(sendAttributionReady, ms));
     }
 
+    // PPF_READY goes to every ancestor: the wrapper does not run Velo code, the Wix
+    // page (window.top) does, and an unknown number of layers may sit in between.
     function sendAttributionReady(){
-      try { window.parent?.postMessage({ type: 'PPF_READY' }, '*'); } catch(e){}
+      ancestorWindows().forEach(w => {
+        try { w.postMessage({ type: 'PPF_READY' }, '*'); } catch(e){}
+      });
     }
 
     // Flat fields for the lead payload; missing values are sent as null, never omitted.
