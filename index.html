@@ -531,8 +531,9 @@
     /// ========= CONFIGURATION =========
     const SUPABASE_URL = (typeof window.PRESUPUESTO_SUPABASE_URL === "string" && window.PRESUPUESTO_SUPABASE_URL.trim())
       || "https://pxgjwdhwxtzizhgotqur.supabase.co";
+    // Publishable key (public by design, role anon). Paste the value from Supabase > Settings > API Keys > Publishable key.
     const SUPABASE_ANON_KEY = (typeof window.PRESUPUESTO_SUPABASE_ANON_KEY === "string" && window.PRESUPUESTO_SUPABASE_ANON_KEY.trim())
-      || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4Z2p3ZGh3eHR6aXpoZ290cXVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMwMDc4MjAsImV4cCI6MjA2ODU4MzgyMH0.H-31tjjjcNAn7jpMutYZN6LLImqdsVvYoJWxhYtER84";
+      || "sb_publishable_fRwOuU1Yvp_yr7nNfB0q6g_dwq12d6H";
     const WEBHOOK_URL = "https://ppf-intake-worker.ppfbarna.workers.dev/lead";
     const PRIVACY_URL = "https://www.ppfbarcelona.es/pol%C3%ADtica-de-privacidad";
     const UI_FORM_KEY = "quote_v2";
@@ -544,24 +545,16 @@
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
     });
 
-    if (SUPABASE_URL.includes('__PPF_BUDGETS_SUPABASE_URL__') || SUPABASE_ANON_KEY.includes('__PPF_BUDGETS_SUPABASE_ANON_KEY__')) {
-      console.error('CONFIG ERROR: replace __PPF_BUDGETS_SUPABASE_URL__ and __PPF_BUDGETS_SUPABASE_ANON_KEY__ before publishing.');
+    if (SUPABASE_URL.includes('__PPF_BUDGETS_SUPABASE_URL__') || SUPABASE_ANON_KEY.includes('__PPF_BUDGETS_SUPABASE_ANON_KEY__') || SUPABASE_ANON_KEY.includes('PASTE_SB_PUBLISHABLE_KEY_HERE')) {
+      console.error('CONFIG ERROR: set the PPF budgets publishable key (sb_publishable_...) before publishing.');
     }
 
-    // Safety guard: never use SERVICE_ROLE_DO_NOT_USE_IN_BROWSER key in frontend
-    function jwtRole(token){
-      try{
-        const part = token.split('.')[1];
-        const json = JSON.parse(atob(part.replace(/-/g,'+').replace(/_/g,'/')));
-        return json && json.role ? String(json.role) : '';
-      } catch(e){ return ''; }
-    }
-    const _role = jwtRole(SUPABASE_ANON_KEY);
-    if (_role === 'SERVICE_ROLE_DO_NOT_USE_IN_BROWSER'){
-      console.error('SECURITY ERROR: SERVICE_ROLE_DO_NOT_USE_IN_BROWSER key detected. Replace with anon public key.');
+    // Safety guard: a secret key must never be used in the browser
+    if (SUPABASE_ANON_KEY.startsWith('sb_secret_')){
+      console.error('SECURITY ERROR: secret key detected in the browser. Replace it with the publishable key.');
       const b = document.createElement('div');
       b.className = 'max-w-3xl mx-auto px-5 py-3';
-      b.innerHTML = '<div class="warnbox"><div class="title">Configuración incorrecta</div><div class="text-sm">Estás usando <b>SERVICE_ROLE_DO_NOT_USE_IN_BROWSER</b> en el navegador. Sustituye SUPABASE_ANON_KEY por la <b>anon public key</b> del proyecto PPF budgets.</div></div>';
+      b.innerHTML = '<div class="warnbox"><div class="title">Configuración incorrecta</div><div class="text-sm">Estás usando una <b>secret key</b> en el navegador. Sustituye SUPABASE_ANON_KEY por la <b>publishable key</b> del proyecto PPF budgets.</div></div>';
       document.body.prepend(b);
     }
 
@@ -2807,4 +2800,3 @@ partial_services: servicePartialAll,
   </script>
 </body>
 </html>
-
